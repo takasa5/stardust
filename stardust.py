@@ -140,7 +140,7 @@ def draw_line(img, stars, constellation):
                 i += 1
             else:
                 #SGT_ANGS.append(theta)
-                SGT_STD_D.append(d1/d1)
+                #SGT_STD_D.append(d1/d1)
                 cv2.line(img, (std[0],std[1]), (p1[0],p1[1]), WHITE, LWEIGHT)
                 cv2.circle(img, (std[0],std[1]), CRADIUS, WHITE, LWEIGHT)
 
@@ -157,7 +157,8 @@ def draw_line(img, stars, constellation):
 def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
     """(描画判断、描画先、前の座標、前ベクトル、基準点、基準距離、星座標リスト、星座dic)"""
     C = constellation
-    dist, ang = C["D"][C["itr"]], C["ANGS"][C["itr"]]
+    dist, ang, rd = C["D"][C["itr"]], C["ANGS"][C["itr"]], C["STD_D"][C["itr"]]
+    #for (dist, ang, rd) in zip(C["D"][C["itr"]], C["ANGS"][C["itr"]], C["STD_D"][C["itr"]])
     if bp is None:
         return (None, None)
 
@@ -180,7 +181,6 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
             rad = math.acos(cos)
             theta = rad * 180 / np.pi
             d_s = np.linalg.norm(p-std_p)/std_d
-            rd = C["STD_D"][C["itr"]]
             
             if (theta > ang-2.5 and theta < ang+2.5)  and (d_s > rd*0.8 and d_s < rd*1.2): 
                 A.append(theta)
@@ -220,7 +220,7 @@ if __name__ == '__main__':
     #img = scale_down(img)
     cv2.imshow("stardust", img)
     cv2.setMouseCallback("stardust", on_mouse, stars)
-    print("SGT_ANGS:",SGT_ANGS)
-    print("SGT_STD_D:",SGT_STD_D)
+    #print("SGT_ANGS:",SGT_ANGS)
+    #print("SGT_STD_D:",SGT_STD_D)
     cv2.imwrite("SGT_" + IMAGE_FILE + ".JPG", img)
     cv2.waitKey()
