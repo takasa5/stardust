@@ -107,8 +107,7 @@ def search_near_star(x, y, i, stars):
 def draw_line(img, stars):
     for star in stars:
         std = np.array([star[0][0], star[0][1]])
-    
-    
+
     for star in stars:
         #print(star)
         std = np.array([star[0][0], star[0][1]])
@@ -121,10 +120,10 @@ def draw_line(img, stars):
                 #print("not found")
                 break
 
-            j = 0
-            p2 = search_near_star(p1[0], p1[1], j, stars)[0]
+            #j = 0
+            #p2 = search_near_star(p1[0], p1[1], j, stars)[0]
             #print("p2", p2[0], p2[1], sep=' ')
-            d2 = np.linalg.norm(p1-p2)
+            #d2 = np.linalg.norm(p1-p2)
             """
             while d2/d1 < 1.2: #星2と星3の距離が適正になるまで探す
                 j += 1
@@ -132,7 +131,27 @@ def draw_line(img, stars):
                 d2 = np.linalg.norm(p1-p2)
                 print("p2", p2[0], p2[0], sep=' ')
             """
-            while d2/d1 < 1.25*1.3: #適正範囲中の全てについて探索
+            #while d2/d1 < 1.25*1.3: #適正範囲中の全てについて探索
+            point, bector = trac_constellation(False, img, 1.25, 85, p1, p1-std, std, d1, stars)
+            point, bector = trac_constellation(False, img, 0.905, 47, point, bector, std, d1, stars)
+            point, bector = trac_constellation(False, img, 1.75, 37, point, bector, std, d1, stars)
+            point, bector = trac_constellation(False, img, 2.37, 29, point, bector, std, d1, stars)
+
+            if point is None:
+                i +=1
+            else:
+                #SGT_ANGS.append(theta)
+                SGT_STD_D.append(d1/d1)
+                cv2.line(img, (std[0],std[1]), (p1[0],p1[1]), WHITE, LWEIGHT)
+                cv2.circle(img, (std[0],std[1]), CRADIUS, WHITE, LWEIGHT)
+                #SGT_STD_D.append(np.linalg.norm(p2-std)/d1)
+                #cv2.line(img, (p1[0],p1[1]), (p2[0],p2[1]), WHITE, LWEIGHT)
+                #cv2.circle(img, (p1[0], p1[1]), CRADIUS, WHITE, LWEIGHT)
+            
+                #draw_rest_sgt(img, p2, p2-p1, d1)
+                draw_rest_sgt(img, p1, p1-std, std, d1, stars)
+                return
+                """ 
                 #角度を求める
                 dot = np.dot(p1-std, p2-p1)
                 cos = dot / (d1*d2)
@@ -145,6 +164,7 @@ def draw_line(img, stars):
                 else:
                     rad = math.acos(cos)
                     theta = rad * 180 / np.pi
+
                     #if theta > 84 and theta < 85:
                     if theta > 84 and theta < 87:
                         print("start:",std, theta, sep=' ')
@@ -174,11 +194,13 @@ def draw_line(img, stars):
                         p2 = search_near_star(p1[0], p1[1], j, stars)[0]
                         d2 = np.linalg.norm(p1-p2)
                         #print("p2", p2[0], p2[1], sep=' ')
-            i += 1
+                """
+            #i += 1
     
 def draw_rest_sgt(img, bp, bec, std_p, std_d, stars):
     """直前の点、直前のベクトル、基準距離を渡して残りを描画"""
-    point, bector = trac_constellation(True, img, 0.905, 47, bp, bec, std_p, std_d, stars)
+    point, bector = trac_constellation(True, img, 1.25, 85, bp, bec, std_p, std_d, stars)
+    point, bector = trac_constellation(True, img, 0.905, 47, point, bector, std_p, std_d, stars)
     point, bector = trac_constellation(True, img, 1.75, 37, point, bector, std_p, std_d, stars)
     point, bector = trac_constellation(True, img, 2.37, 29, point, bector, std_p, std_d, stars)
 
@@ -191,7 +213,9 @@ def trac_constellation(write, img, dist, ang, bp, bec, std_p, std_d, stars):
     angles = []
     A = []
     points = []
-    if ang == 47:
+    if ang == 85:
+        S = 0
+    elif ang == 47:
         S = 1
     elif ang == 37:
         S = 2
@@ -256,7 +280,7 @@ def trac_constellation(write, img, dist, ang, bp, bec, std_p, std_d, stars):
         return (tp, tp-bp)
 
 if __name__ == '__main__':
-    IMAGE_FILE = "1618"
+    IMAGE_FILE = "1499"
     img = cv2.imread(IMAGE_FILE + ".JPG") #IMG_1618
     stars = detect_stars(scale_down(img))
     img = scale_down(img)
