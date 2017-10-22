@@ -51,12 +51,12 @@ def detect_stars(image):
                 stars.append(np.array([cnt[0][0]], dtype='int32'))
         
         if len(stars) > 150 and thr <= 250:
-            print("len:",len(stars))
+            #print("len:",len(stars))
             thr += 10
             del new
-            print("threshold:",thr)
+            #print("threshold:",thr)
         else:
-            print("len:",len(stars))
+            #print("len:",len(stars))
             flag = False
         """
         elif thr == 250 and len(stars) < 1000:
@@ -82,9 +82,11 @@ def detect_stars(image):
                 stars.append(np.array([[cx, cy]], dtype='int32'))
             else:
                 stars.append(np.array([cnt[0][0]], dtype='int32'))
+        print("threashold:",thr)
         return stars
         #sys.exit()
     else:
+        print("threashold:",thr)
         #print(stars)
         return stars
 
@@ -203,6 +205,7 @@ def draw_rest_sgt(img, bp, bec, std_p, std_d, stars):
     point, bector = trac_constellation(True, img, 0.905, 47, point, bector, std_p, std_d, stars)
     point, bector = trac_constellation(True, img, 1.75, 37, point, bector, std_p, std_d, stars)
     point, bector = trac_constellation(True, img, 2.37, 29, point, bector, std_p, std_d, stars)
+    cv2.circle(img, (point[0], point[1]), CRADIUS, WHITE, LWEIGHT)
 
 def trac_constellation(write, img, dist, ang, bp, bec, std_p, std_d, stars):
     """(描画判断、描画先、星間距離、前ベクトルとの角度、前の座標、前ベクトル、基準点、基準距離、星座標)"""
@@ -247,12 +250,12 @@ def trac_constellation(write, img, dist, ang, bp, bec, std_p, std_d, stars):
                     cv2.circle(img, (bp[0],bp[1]), 3, WHITE, 1)
                 return (p, p-bp)
                 """
-                print("in", p, theta, sep=" ")
+                print("in", p, theta, sep=" ", end=" ")
                 p = search_near_star(bp[0], bp[1], i, stars)[0]
                 d = np.linalg.norm(bp - p)
                 i += 1
             else:
-                print("out", p, theta, sep=" ")
+                #print("out", p, sep=" ", end=" ")
                 p = search_near_star(bp[0], bp[1], i, stars)[0]
                 d = np.linalg.norm(bp - p)
                 i += 1
@@ -270,8 +273,8 @@ def trac_constellation(write, img, dist, ang, bp, bec, std_p, std_d, stars):
         return (None, None)
     else:
         tp = np.array(points[np.argmin(angles)])
-        print("w:", tp, sep=' ')
         if write is True:
+            print("\nw:", tp)
             S += 1
             SGT_ANGS.append(A[np.argmin(angles)])
             SGT_STD_D.append(np.linalg.norm(tp-std_p)/std_d)
@@ -280,7 +283,7 @@ def trac_constellation(write, img, dist, ang, bp, bec, std_p, std_d, stars):
         return (tp, tp-bp)
 
 if __name__ == '__main__':
-    IMAGE_FILE = "1499"
+    IMAGE_FILE = "1916"
     img = cv2.imread(IMAGE_FILE + ".JPG") #IMG_1618
     stars = detect_stars(scale_down(img))
     img = scale_down(img)
