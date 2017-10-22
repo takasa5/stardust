@@ -5,6 +5,13 @@ import math
 import sys
 
 WHITE = (255, 255, 255)
+# TODO: 1本目の線の長さを自動判定
+FIRSTL = 35 * 8
+# TODO: 線の太さ、円の半径を自動判定
+LWEIGHT = 1
+CRADIUS = 3
+
+SGT_ANGS = []
 
 def scale_down(image):
     hight = image.shape[0]
@@ -14,18 +21,23 @@ def scale_down(image):
 
 def detect_stars(image):
     flag = True
-    thr = 70
+    thr = 100
     #make grayscale image
     img_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     while flag:
         stars = []
         #flag = False
         ret, new = cv2.threshold(img_gray, thr, 255, cv2.THRESH_BINARY)
-        cv2.imshow("gray", new)
+        #cv2.imshow("gray", new)
         
         #detect contours of stars
         det_img, contours, hierarchy = cv2.findContours(new, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        #before = cv2.drawContours(before, contours, -1, (0, 255, 0), 1)
+        
+        im = cv2.drawContours(image.copy(), contours, -1, (0, 255, 0), 3)
+        if im.shape[0] > 1000 or im.shape[1] > 1000:
+            im = scale_down(im)
+        cv2.imshow("gray", im)
+
         for cnt in contours:
             M = cv2.moments(cnt)
 
@@ -36,7 +48,7 @@ def detect_stars(image):
             else:
                 stars.append(np.array([cnt[0][0]], dtype='int32'))
         
-        if len(stars) > 150:
+        if len(stars) > 270 and thr <= 250:
             print("len:",len(stars))
             thr += 10
             del new
@@ -44,12 +56,19 @@ def detect_stars(image):
         else:
             print("len:",len(stars))
             flag = False
+        """
+        elif thr == 250 and len(stars) < 1000:
+            scale_down(image)
+            scale_down(img_gray)
+            thr = 100
+        """
     if len(stars) == 0:
         print("can't detect sky")
         sys.exit()
     else:
+        #print(stars)
         return stars
-    #print(stars)
+
 
 def on_mouse(event, x, y, flag, param):
     if event == cv2.EVENT_LBUTTONDOWN:
@@ -80,7 +99,7 @@ def draw_line(img, stars):
             p1 = search_near_star(std[0], std[1], i, stars)[0]
             #print("p1", p1[0], p1[1], sep=' ')
             d1 = np.linalg.norm(std-p1)
-            if d1 > 35:
+            if d1 > FIRSTL/8:
                 print("not found")
                 break
 
@@ -109,19 +128,23 @@ def draw_line(img, stars):
                     rad = math.acos(cos)
                     theta = rad * 180 / np.pi
                     #if theta > 84 and theta < 85:
-                    if theta > 82 and theta < 87:
-                        print(theta)
+                    if theta > 84 and theta < 87:
+                        print(std, theta, sep=' ')
                         #cv2.circle(img, (std[0],std[1]), 3, WHITE, 1) #debug
                         point, bector = trac_constellation(False, img, 0.905, 47, p2, p2-p1, d1, stars)
+                        point, bector = trac_constellation(False, img, 1.75, 37, point, bector, d1, stars)
+                        point, bector = trac_constellation(False, img, 2.37, 29, point, bector, d1, stars)
+                        
                         if point is None:
                             j += 1
                             p2 = search_near_star(p1[0], p1[1], j, stars)[0]
                             d2 = np.linalg.norm(p1-p2)
                         else:
-                            cv2.line(img, (std[0],std[1]), (p1[0],p1[1]), WHITE, 1)
-                            cv2.circle(img, (std[0],std[1]), 3, WHITE, 1)
-                            cv2.line(img, (p1[0],p1[1]), (p2[0],p2[1]), WHITE, 1)
-                            cv2.circle(img, (p1[0], p1[1]), 3, WHITE, 1)
+                            SGT_ANGS.append(theta)
+                            cv2.line(img, (std[0],std[1]), (p1[0],p1[1]), WHITE, LWEIGHT)
+                            cv2.circle(img, (std[0],std[1]), CRADIUS, WHITE, LWEIGHT)
+                            cv2.line(img, (p1[0],p1[1]), (p2[0],p2[1]), WHITE, LWEIGHT)
+                            cv2.circle(img, (p1[0], p1[1]), CRADIUS, WHITE, LWEIGHT)
                         
                             #draw_rest_sgt(img, p2, p2-p1, d1)
                             draw_rest_sgt(img, p2, p2-p1, d1, stars)
@@ -137,15 +160,16 @@ def draw_rest_sgt(img, bp, bec, std_d, stars):
     """直前の点、直前のベクトル、基準距離を渡して残りを描画"""
     point, bector = trac_constellation(True, img, 0.905, 47, bp, bec, std_d, stars)
     point, bector = trac_constellation(True, img, 1.75, 37, point, bector, std_d, stars)
-    point, bector = trac_constellation(True, img, 2.1, 30, point, bector, std_d, stars)
+    point, bector = trac_constellation(True, img, 2.37, 29, point, bector, std_d, stars)
 
 def trac_constellation(write, img, dist, ang, bp, bec, std_d, stars):
-    """(描画先、星間距離、前ベクトルとの角度、前の座標、前ベクトル、基準距離)"""
+    """(描画判断、描画先、星間距離、前ベクトルとの角度、前の座標、前ベクトル、基準点、基準距離、星座標)"""
     if bp is None:
         return (None, None)
     
     i, p, d = 0, 0, 0
     angles = []
+    A = []
     points = []
     while d/std_d < dist * 0.8:
         p = search_near_star(bp[0], bp[1], i, stars)[0]
@@ -161,7 +185,8 @@ def trac_constellation(write, img, dist, ang, bp, bec, std_d, stars):
         else:
             rad = math.acos(cos)
             theta = rad * 180 / np.pi
-            if theta > ang-20 and theta < ang+25:
+            if theta > ang-2.5 and theta < ang+2.5: #角度10度間で探し差の少ないもの
+                A.append(theta)
                 angles.append(abs(theta-ang))
                 points.append([p[0], p[1]])
                 """
@@ -181,6 +206,7 @@ def trac_constellation(write, img, dist, ang, bp, bec, std_d, stars):
                 i += 1
     if len(angles) == 0:
         print("angles is empty", ang)
+        """
         if ang == 27:
             print("re")
             point, bector = trac_constellation(write, img, dist, ang+5, bp, bec, std_d, stars)
@@ -188,23 +214,28 @@ def trac_constellation(write, img, dist, ang, bp, bec, std_d, stars):
                 point, bector = trac_constellation(write, img, dist, ang-5, bp, bec, std_d, stars)    
             return (point, bector)
         else:
-            return (None, None)
+        """
+        return (None, None)
     else:
         tp = np.array(points[np.argmin(angles)])
+        SGT_ANGS.append(A[np.argmin(angles)])
         print("w:", tp, sep=' ')
         if write is True:
             print(bp)
-            cv2.line(img, (bp[0],bp[1]), (tp[0], tp[1]), WHITE, 1)
-            cv2.circle(img, (bp[0], bp[1]), 3, WHITE, 1)
+            cv2.line(img, (bp[0],bp[1]), (tp[0], tp[1]), WHITE, LWEIGHT)
+            cv2.circle(img, (bp[0], bp[1]), CRADIUS, WHITE, LWEIGHT)
         return (tp, tp-bp)
 
 if __name__ == '__main__':
-    img = cv2.imread("test.JPG") #IMG_1618
-    before = scale_down(img)
-    stars = detect_stars(before)
-    draw_line(before, stars)
-
-    cv2.imshow("stardust", before)
+    IMAGE_FILE = "1614"
+    img = cv2.imread(IMAGE_FILE + ".JPG") #IMG_1618
+    stars = detect_stars(scale_down(img))
+    img = scale_down(img)
+    draw_line(img, stars)
+    
+    #img = scale_down(img)
+    cv2.imshow("stardust", img)
     cv2.setMouseCallback("stardust", on_mouse, stars)
-
+    print(SGT_ANGS)
+    cv2.imwrite("SGT_" + IMAGE_FILE + ".JPG", img)
     cv2.waitKey()
