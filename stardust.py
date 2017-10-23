@@ -11,6 +11,10 @@ FIRSTL = 35 * 8
 # TODO: 線の太さ、円の半径を自動判定
 LWEIGHT = 1
 CRADIUS = 3
+# TODO: 星が少なすぎても多すぎても調整するようにすべき？
+THREASH = 240 #(240)画像から検出したいおおよその星の数
+SIZE = 666 #画像サイズ(横)
+ARANGE = 3 #許容角度範囲(±)
 SGT3 = {"itr":0,
         "ANGS":[128, 15.17],
         "STD_D":[3.76, 4.9],
@@ -37,12 +41,12 @@ SGT = [SGT1]
 #itr:どこの値を参照すべきかのイテレータ、書き込んだらインクリメント
 #ANGS:角度 STD_D:基準点からの距離 D:前の点との距離
 
-T = [1.66, 1.97, 3.69, 5.88]
+#T = [1.66, 1.97, 3.69, 5.88]
 
-def scale_down(image):
+def scale_down(image, scale):
     hight = image.shape[0]
     width = image.shape[1]
-    small = cv2.resize(image, (round(width/8), round(hight/8)))
+    small = cv2.resize(image, (round(width/scale), round(hight/scale)))
     return small
 
 def detect_stars(image):
@@ -61,8 +65,8 @@ def detect_stars(image):
         det_img, contours, hierarchy = cv2.findContours(new, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
         im = cv2.drawContours(image.copy(), contours, -1, (0, 255, 0), 3)
-        if im.shape[0] > 1000 or im.shape[1] > 1000:
-            im = scale_down(im)
+        
+        im = scale_down(im, im.shape[1]/SIZE)
         cv2.imshow("gray", im)
 
         for cnt in contours:
@@ -75,7 +79,7 @@ def detect_stars(image):
             else:
                 stars.append(np.array([cnt[0][0]], dtype='int32'))
         
-        if len(stars) > 240 and thr <= 250:
+        if len(stars) > THREASH and thr <= 250:
             #print("len:",len(stars))
             thr += 10
             del new
@@ -120,6 +124,10 @@ def on_mouse(event, x, y, flag, param):
 
 def search_near_star(x, y, i, stars):
     """(x, y)にi番目(0オリジン)に近いものを返す"""
+    if i >= len(stars):
+        print("Can't detect")
+        sys.exit(1)
+    
     p = np.array([x, y])
     L = np.array([])
     for star in stars:
@@ -140,7 +148,7 @@ def draw_line(img, stars, constellation):
             p1 = search_near_star(std[0], std[1], i, stars)[0]
             #print("p1", p1[0], p1[1], sep=' ')
             d1 = np.linalg.norm(std-p1)
-            if d1 > FIRSTL/7: # TODO:要検証箇所
+            if d1 > SIZE/20: # TODO:要検証箇所 カッチリ決められないなら小さい値から見つかるまであげてく？
                 #print("not found")
                 break
 
@@ -167,26 +175,14 @@ def draw_line(img, stars, constellation):
                 bector = p1 - std
                 #Trueで描画、分岐点以降についても
                 trac_constellation(True, img, p1, bector, std, d1, stars, C[0])
-                """
-                for point in bps:
-                    print("start point:", point)
-                    trac_constellation(True, img, point, bector, std, d1, stars, C[0])
-                    cv2.circle(img, (point[0], point[1]), CRADIUS, WHITE, LWEIGHT)
-                    C[0]["itr"] = 0
-                """
-                """
-                for (cs, point) in zip(C, bps):
-                    print("start point:",point)
-                    trac_constellation(True, img, point, bector, std, d1, stars, cs)
-                    cv2.circle(img, (point[0], point[1]), CRADIUS, WHITE, LWEIGHT)
-                    cs["itr"] = 0
-                """
+                
                 return
 
 def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
     """(描画判断、描画先、前の座標、前ベクトル、基準点、基準距離、星座標リスト、星座dic)"""
     C = constellation
-    print(C["itr"])
+    if C["itr"] != 0:
+        print(C["itr"])
     dist, ang, rd = C["D"][C["itr"]], C["ANGS"][C["itr"]], C["STD_D"][C["itr"]]
     #for (dist, ang, rd) in zip(C["D"][C["itr"]], C["ANGS"][C["itr"]], C["STD_D"][C["itr"]])
     i, p, d = 0, 0, 0
@@ -210,7 +206,7 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
             #theta = np.deg2rad(rad)
             d_s = np.linalg.norm(p-std_p)/std_d
             # TODO:角度の許容範囲
-            if (theta > ang-3 and theta < ang+3)  and (d_s > rd*0.8 and d_s < rd*1.2): 
+            if (theta > ang-ARANGE and theta < ang+ARANGE)  and (d_s > rd*0.8 and d_s < rd*1.2): 
                 A.append(theta)
                 angles.append(abs(theta-ang))
                 points.append([p[0], p[1]])
@@ -220,7 +216,7 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
                 d = np.linalg.norm(bp - p)
                 i += 1
             else:
-                print("out", p, "(theta, d_s)", (theta, d_s), sep=" ")
+                #print("out", p, "(theta, d_s)", (theta, d_s), sep=" ")
                 p = search_near_star(bp[0], bp[1], i, stars)[0]
                 d = np.linalg.norm(bp - p)
                 i += 1
@@ -241,13 +237,7 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
             print("writed:", tp)
             cv2.line(img, (bp[0], bp[1]), (tp[0], tp[1]), WHITE, LWEIGHT)
             cv2.circle(img, (bp[0], bp[1]), CRADIUS, WHITE, LWEIGHT)
-            """
-            #分岐があった場合そちらの描画を先に試みる
-            if C["itr"] in C["JCT"]:
-                index = C["JCT"].index(C["itr"])
-                branch, rest = C["BP"][index], C["REST"][index] 
-                trac_constellation(True, img, branch, bec, std_p, std_d, stars, rest)
-            """    
+              
         #print(C["itr"])
         #return (tp, tp-bp)
         if len(C["BP"]) == 0:
@@ -268,10 +258,11 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
         return trac_constellation(write, img, tp, tp-bp, std_p, std_d, stars, C)
 
 if __name__ == '__main__':
-    IMAGE_FILE = "1614"
+    IMAGE_FILE = "1916"
     img = cv2.imread(IMAGE_FILE + ".JPG") #IMG_1618
-    stars = detect_stars(scale_down(img))
-    img = scale_down(img)
+    stars = detect_stars(scale_down(img, img.shape[1]/SIZE))
+    
+    img = scale_down(img, img.shape[1]/SIZE)
     draw_line(img, stars, SGT)
     
     #img = scale_down(img)
