@@ -15,6 +15,16 @@ CRADIUS = 3
 THREASH = 240 #(240)画像から検出したいおおよその星の数
 SIZE = 666 #画像サイズ(横)
 ARANGE = 3 #許容角度範囲(±)
+SGT5 = {"itr":0,
+        "ANGS":[48.5], "STD_D":[5.14], "D":[1.41],
+        "JCT":[], "BP":[], "REST":[]
+       }
+SGT4 = {"itr":0,
+        "ANGS":[123.1, 27.85, 37.55],
+        "STD_D":[3.76, 3.89, 4.874],
+        "D":[1.93, 1.907, 1.139],
+        "JCT":[0], "BP":[], "REST":[SGT5]
+       }
 SGT3 = {"itr":0,
         "ANGS":[128, 15.17],
         "STD_D":[3.76, 4.9],
@@ -25,17 +35,13 @@ SGT2 = {"itr":0,
         "ANGS":[64.5, 96.3],
         "STD_D":[3.49, 3.89],
         "D":[2.13, 0.78],
-        "JCT":[0],
-        "BP":[],
-        "REST":[SGT3]
+        "JCT":[0], "BP":[], "REST":[SGT3]
        }
 SGT1 = {"itr":0,
         "ANGS":[85, 47, 37, 29],
         "STD_D":[1.66, 1.97, 3.69, 5.88],
         "D":[1.25, 0.905, 1.75, 2.37],
-        "JCT":[0], #2
-        "BP":[],
-        "REST":[SGT2]
+        "JCT":[0, 2], "BP":[], "REST":[SGT2, SGT4]
        }
 SGT = [SGT1]
 #itr:どこの値を参照すべきかのイテレータ、書き込んだらインクリメント
@@ -147,16 +153,16 @@ def draw_line(img, stars, constellation):
     C = constellation
 
     for star in stars:
-        #print(star)
         std = np.array([star[0][0], star[0][1]])
         i = 0
+        print(std)
         while True:
             #2番目の星候補
             p1 = search_near_star(std[0], std[1], i, stars)[0]
             #print("p1", p1[0], p1[1], sep=' ')
             d1 = np.linalg.norm(std-p1)
-            if d1 > SIZE/20: # TODO:要検証箇所 カッチリ決められないなら小さい値から見つかるまであげてく？
-            #if d1 > 35*8:
+            #if d1 > SIZE/20: # TODO:要検証箇所 カッチリ決められないなら小さい値から見つかるまであげてく？
+            if d1 > 35*8:
                 #print("not found")
                 break
 
@@ -247,9 +253,8 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
               
         #print(C["itr"])
         #return (tp, tp-bp)
-        if len(C["BP"]) == 0:
-            if C["itr"] in C["JCT"]:
-                C["BP"].append(tp)
+        if C["itr"] in C["JCT"]:
+            C["BP"].append(tp)
 
         C["itr"] += 1
         if C["itr"] == len(C["D"]):
@@ -257,8 +262,8 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
             cv2.circle(img, (tp[0], tp[1]), CRADIUS, WHITE, LWEIGHT)
             #検出部終了時描画モードかつ分岐点が存在したら続きを描画
             if write and (len(C["BP"]) > 0):
-                print("nowonBP:",C["BP"])
                 for (branch, rest) in zip(C["BP"], C["REST"]):
+                    print("nowonBP:", branch)
                     trac_constellation(True, img, branch, tp-bp, std_p, std_d, stars, rest)    
                 
             return (END, END)
@@ -269,18 +274,18 @@ if __name__ == '__main__':
     IMAGE_FILE = "1614" #スピード:test < 1618 <= 1614 << 1916
     img = cv2.imread(IMAGE_FILE + ".JPG") #IMG_1618
     
-    """
-    #BIGMODE l150付近も変えよう
+    
+    #BIGMODE l160付近も変えよう
     stars = detect_stars(img)
     draw_line(img, stars, SGT)
     img = scale_down(img, img.shape[1]/SIZE)
-    """
     
-    #SMALLMODE l150付近も変えよう 
+    """
+    #SMALLMODE l160付近も変えよう 
     img = scale_down(img, img.shape[1]/SIZE)
     stars = detect_stars(img)
     draw_line(img, stars, SGT)
-    
+    """
     cv2.imshow("stardust", img)
     cv2.setMouseCallback("stardust", on_mouse, stars)
     
