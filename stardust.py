@@ -4,22 +4,39 @@ import cv2
 import math
 import sys
 
+END = (2**16, 2**16)
 WHITE = (255, 255, 255)
 # TODO: 1本目の線の長さを自動判定
 FIRSTL = 35 * 8
 # TODO: 線の太さ、円の半径を自動判定
 LWEIGHT = 1
 CRADIUS = 3
-
-SGT = {"itr":0,
-       "ANGS":[85, 47, 37, 29],
-       "STD_D":[1.66, 1.97, 3.69, 5.88],
-       "D":[1.25, 0.905, 1.75, 2.37]
-      }
+SGT3 = {"itr":0,
+        "ANGS":[128, 15.17],
+        "STD_D":[3.76, 4.9],
+        "D":[0.59, 1.22],
+        "JCT":[], "BP":[], "REST":[]
+       }
+SGT2 = {"itr":0,
+        "ANGS":[64.5, 96.3],
+        "STD_D":[3.49, 3.89],
+        "D":[2.13, 0.78],
+        "JCT":[0],
+        "BP":[],
+        "REST":[SGT3]
+       }
+SGT1 = {"itr":0,
+        "ANGS":[85, 47, 37, 29],
+        "STD_D":[1.66, 1.97, 3.69, 5.88],
+        "D":[1.25, 0.905, 1.75, 2.37],
+        "JCT":[0], #2
+        "BP":[],
+        "REST":[SGT2]
+       }
+SGT = [SGT1]
 #itr:どこの値を参照すべきかのイテレータ、書き込んだらインクリメント
 #ANGS:角度 STD_D:基準点からの距離 D:前の点との距離
-SGT_ANGS = []
-SGT_STD_D = []
+
 T = [1.66, 1.97, 3.69, 5.88]
 
 def scale_down(image):
@@ -58,7 +75,7 @@ def detect_stars(image):
             else:
                 stars.append(np.array([cnt[0][0]], dtype='int32'))
         
-        if len(stars) > 150 and thr <= 250:
+        if len(stars) > 240 and thr <= 250:
             #print("len:",len(stars))
             thr += 10
             del new
@@ -113,14 +130,13 @@ def search_near_star(x, y, i, stars):
 
 def draw_line(img, stars, constellation):
     C = constellation
-    for star in stars:
-        std = np.array([star[0][0], star[0][1]])
 
     for star in stars:
         #print(star)
         std = np.array([star[0][0], star[0][1]])
-        i = 1
+        i = 0
         while True:
+            #2番目の星候補
             p1 = search_near_star(std[0], std[1], i, stars)[0]
             #print("p1", p1[0], p1[1], sep=' ')
             d1 = np.linalg.norm(std-p1)
@@ -129,39 +145,50 @@ def draw_line(img, stars, constellation):
                 break
 
             point, bector = p1, p1-std
-            print(point)
-            #Falseで星座が書けるかどうかをチェック
-            for k in range(4):
-                point, bector = trac_constellation(False, img, point, bector, std, d1, stars, C)
-                C["itr"] += 1
-            C["itr"] = 0
-
-            if point is None:
+            #print(point)
+            #C[0]をFalseで星座が書けるかどうかをチェック
+            point, bector = trac_constellation(False, img, point, bector, std, d1, stars, C[0])
+            C[0]["itr"] = 0
+            #C[0]["BP"] = C[0]["BP"][len(C[0]["BP"])-len(C[0]["JCT"]):]
+            #第一返値で見つかってるかチェック
+            if point is None: #見つかってなければ次の星へ
                 i += 1
-            else:
-                #SGT_ANGS.append(theta)
-                #SGT_STD_D.append(d1/d1)
+            else: #見つかったら
+                #分岐点をbpsに入れる
+                #bps = C[0]["BP"][len(C[0]["BP"])-len(C[0]["JCT"]):]
+                bps = C[0]["BP"][:]
+                bps.insert(0, p1)
+                print("BP:",C[0]["BP"])
+                #基準点と次の点への線を描画
                 cv2.line(img, (std[0],std[1]), (p1[0],p1[1]), WHITE, LWEIGHT)
                 cv2.circle(img, (std[0],std[1]), CRADIUS, WHITE, LWEIGHT)
-
-                #draw_rest_sgt(img, p1, p1-std, std, d1, stars)
-                point, bector = p1, p1-std
-                #Trueで記述
-                for k in range(4):
-                    point, bector = trac_constellation(True, img, point, bector, std, d1, stars, C)
-                    C["itr"] += 1
-                cv2.circle(img, (point[0], point[1]), CRADIUS, WHITE, LWEIGHT)
-                C["itr"] = 0
+                print("std_d:",d1) #debug
+                #point, bector = p1, p1-std
+                bector = p1 - std
+                #Trueで描画、分岐点以降についても
+                trac_constellation(True, img, p1, bector, std, d1, stars, C[0])
+                """
+                for point in bps:
+                    print("start point:", point)
+                    trac_constellation(True, img, point, bector, std, d1, stars, C[0])
+                    cv2.circle(img, (point[0], point[1]), CRADIUS, WHITE, LWEIGHT)
+                    C[0]["itr"] = 0
+                """
+                """
+                for (cs, point) in zip(C, bps):
+                    print("start point:",point)
+                    trac_constellation(True, img, point, bector, std, d1, stars, cs)
+                    cv2.circle(img, (point[0], point[1]), CRADIUS, WHITE, LWEIGHT)
+                    cs["itr"] = 0
+                """
                 return
 
 def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
     """(描画判断、描画先、前の座標、前ベクトル、基準点、基準距離、星座標リスト、星座dic)"""
     C = constellation
+    print(C["itr"])
     dist, ang, rd = C["D"][C["itr"]], C["ANGS"][C["itr"]], C["STD_D"][C["itr"]]
     #for (dist, ang, rd) in zip(C["D"][C["itr"]], C["ANGS"][C["itr"]], C["STD_D"][C["itr"]])
-    if bp is None:
-        return (None, None)
-
     i, p, d = 0, 0, 0
     angles = []
     A = []
@@ -180,9 +207,10 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
         else:
             rad = math.acos(cos)
             theta = rad * 180 / np.pi
+            #theta = np.deg2rad(rad)
             d_s = np.linalg.norm(p-std_p)/std_d
-            
-            if (theta > ang-2.5 and theta < ang+2.5)  and (d_s > rd*0.8 and d_s < rd*1.2): 
+            # TODO:角度の許容範囲
+            if (theta > ang-3 and theta < ang+3)  and (d_s > rd*0.8 and d_s < rd*1.2): 
                 A.append(theta)
                 angles.append(abs(theta-ang))
                 points.append([p[0], p[1]])
@@ -192,23 +220,52 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
                 d = np.linalg.norm(bp - p)
                 i += 1
             else:
-                print("out", p, sep=" ", end=' ')
+                print("out", p, "(theta, d_s)", (theta, d_s), sep=" ")
                 p = search_near_star(bp[0], bp[1], i, stars)[0]
                 d = np.linalg.norm(bp - p)
                 i += 1
     if len(angles) == 0:
         #print("itr:", C["itr"], "angles is empty", ang)
+        #print("fail checked")
+        C["BP"].clear()
+        if write:
+            # TODO:理想値を計算し線のみ描画
+            cv2.circle(img, (bp[0], bp[1]), CRADIUS, WHITE, LWEIGHT)
         return (None, None)
     else:
         tp = np.array(points[np.argmin(angles)])
-        print("w:", tp)
-        if write is True:
+        #print("w:", tp)
+
+        if write:
             #S += 1
-            #SGT_ANGS.append(A[np.argmin(angles)])
-            #SGT_STD_D.append(np.linalg.norm(tp-std_p)/std_d)
+            print("writed:", tp)
             cv2.line(img, (bp[0], bp[1]), (tp[0], tp[1]), WHITE, LWEIGHT)
             cv2.circle(img, (bp[0], bp[1]), CRADIUS, WHITE, LWEIGHT)
-        return (tp, tp-bp)
+            """
+            #分岐があった場合そちらの描画を先に試みる
+            if C["itr"] in C["JCT"]:
+                index = C["JCT"].index(C["itr"])
+                branch, rest = C["BP"][index], C["REST"][index] 
+                trac_constellation(True, img, branch, bec, std_p, std_d, stars, rest)
+            """    
+        #print(C["itr"])
+        #return (tp, tp-bp)
+        if len(C["BP"]) == 0:
+            if C["itr"] in C["JCT"]:
+                C["BP"].append(tp)
+
+        C["itr"] += 1
+        if C["itr"] == len(C["D"]):
+            print("end checked")
+            cv2.circle(img, (tp[0], tp[1]), CRADIUS, WHITE, LWEIGHT)
+            #検出部終了時描画モードかつ分岐点が存在したら続きを描画
+            if write and (len(C["BP"]) > 0):
+                print("nowonBP:",C["BP"])
+                for (branch, rest) in zip(C["BP"], C["REST"]):
+                    trac_constellation(True, img, branch, tp-bp, std_p, std_d, stars, rest)    
+                
+            return (END, END)
+        return trac_constellation(write, img, tp, tp-bp, std_p, std_d, stars, C)
 
 if __name__ == '__main__':
     IMAGE_FILE = "1614"
@@ -220,7 +277,6 @@ if __name__ == '__main__':
     #img = scale_down(img)
     cv2.imshow("stardust", img)
     cv2.setMouseCallback("stardust", on_mouse, stars)
-    #print("SGT_ANGS:",SGT_ANGS)
-    #print("SGT_STD_D:",SGT_STD_D)
+    
     cv2.imwrite("SGT_" + IMAGE_FILE + ".JPG", img)
     cv2.waitKey()

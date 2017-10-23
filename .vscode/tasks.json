@@ -7,7 +7,5 @@
     "args": [
         "${file}"
     ],
-"problemMatchers": [
-    "$eslint-compact"
-]
+"problemMatchers": []
 }
