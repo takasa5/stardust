@@ -53,6 +53,12 @@ def detect_stars(image):
     """最適(？)スレッショルドを設定し、抽出した星座標のリストを返す"""
     flag = True
     thr = 100
+    
+    #BIGMODE用処理
+    global CRADIUS, LWEIGHT
+    if image.shape[0] > 2000 or image.shape[1] > 2000:
+        CRADIUS, LWEIGHT = 20, 5
+    
     #make grayscale image
     img_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     while flag:
@@ -64,7 +70,7 @@ def detect_stars(image):
         #detect contours of stars
         det_img, contours, hierarchy = cv2.findContours(new, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
-        im = cv2.drawContours(image.copy(), contours, -1, (0, 255, 0), 3)
+        im = cv2.drawContours(image.copy(), contours, -1, (0, 255, 0), LWEIGHT)
         
         im = scale_down(im, im.shape[1]/SIZE)
         cv2.imshow("gray", im)
@@ -90,6 +96,7 @@ def detect_stars(image):
 
     if len(stars) == 0:
         # TODO:0になったら直前のスレッショルドでやるようにしたい(未検証)
+        # TODO:というよりも画像全体を暗くしてリトライすべきなのでは？
         print("can't detect sky")
         thr -= 10
         del new
@@ -149,6 +156,7 @@ def draw_line(img, stars, constellation):
             #print("p1", p1[0], p1[1], sep=' ')
             d1 = np.linalg.norm(std-p1)
             if d1 > SIZE/20: # TODO:要検証箇所 カッチリ決められないなら小さい値から見つかるまであげてく？
+            #if d1 > 35*8:
                 #print("not found")
                 break
 
@@ -216,13 +224,12 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
                 d = np.linalg.norm(bp - p)
                 i += 1
             else:
-                #print("out", p, "(theta, d_s)", (theta, d_s), sep=" ")
+                print("out", p, "(theta, d_s)", (theta, d_s), sep=" ")
                 p = search_near_star(bp[0], bp[1], i, stars)[0]
                 d = np.linalg.norm(bp - p)
                 i += 1
     if len(angles) == 0:
         #print("itr:", C["itr"], "angles is empty", ang)
-        #print("fail checked")
         C["BP"].clear()
         if write:
             # TODO:理想値を計算し線のみ描画
@@ -258,14 +265,22 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
         return trac_constellation(write, img, tp, tp-bp, std_p, std_d, stars, C)
 
 if __name__ == '__main__':
-    IMAGE_FILE = "1916"
+    #計算はSMALLMODEで、1614でやるとよい
+    IMAGE_FILE = "1614" #スピード:test < 1618 <= 1614 << 1916
     img = cv2.imread(IMAGE_FILE + ".JPG") #IMG_1618
-    stars = detect_stars(scale_down(img, img.shape[1]/SIZE))
     
+    """
+    #BIGMODE l150付近も変えよう
+    stars = detect_stars(img)
+    draw_line(img, stars, SGT)
     img = scale_down(img, img.shape[1]/SIZE)
+    """
+    
+    #SMALLMODE l150付近も変えよう 
+    img = scale_down(img, img.shape[1]/SIZE)
+    stars = detect_stars(img)
     draw_line(img, stars, SGT)
     
-    #img = scale_down(img)
     cv2.imshow("stardust", img)
     cv2.setMouseCallback("stardust", on_mouse, stars)
     
