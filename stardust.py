@@ -182,7 +182,9 @@ def draw_line(img, stars, constellation):
                 bps.insert(0, p1)
                 print("BP:",C[0]["BP"])
                 #基準点と次の点への線を描画
-                cv2.line(img, (std[0],std[1]), (p1[0],p1[1]), WHITE, LWEIGHT)
+                sp, ep = line_adjust(std, p1)
+                #cv2.line(img, (std[0],std[1]), (p1[0],p1[1]), WHITE, LWEIGHT)
+                cv2.line(img, sp, ep, WHITE, LWEIGHT)
                 cv2.circle(img, (std[0],std[1]), CRADIUS, WHITE, LWEIGHT)
                 print("std_d:",d1) #debug
                 #point, bector = p1, p1-std
@@ -191,6 +193,19 @@ def draw_line(img, stars, constellation):
                 trac_constellation(True, img, p1, bector, std, d1, stars, C[0])
                 
                 return
+
+def line_adjust(start, end):
+    """線分を円周の部分までで止めるような始点、終点を返す"""
+    b = end - start
+    b = b / np.linalg.norm(b)
+    restart = start + b * CRADIUS
+
+    b = start - end
+    b = b / np.linalg.norm(b)
+    reend = end + b * CRADIUS
+
+    return ((int(restart[0]), int(restart[1])), (int(reend[0]), int(reend[1])))
+
 
 def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
     """(描画判断、描画先、前の座標、前ベクトル、基準点、基準距離、星座標リスト、星座dic)"""
@@ -248,7 +263,8 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
         if write:
             #S += 1
             print("writed:", tp)
-            cv2.line(img, (bp[0], bp[1]), (tp[0], tp[1]), WHITE, LWEIGHT)
+            sp, ep = line_adjust(bp, tp)
+            cv2.line(img, sp, ep, WHITE, LWEIGHT)
             cv2.circle(img, (bp[0], bp[1]), CRADIUS, WHITE, LWEIGHT)
               
         #print(C["itr"])
@@ -271,7 +287,7 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
 
 if __name__ == '__main__':
     #計算はSMALLMODEで、1614でやるとよい
-    IMAGE_FILE = "1614" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "test" #スピード:test < 1618 <= 1614 << 1916
     img = cv2.imread(IMAGE_FILE + ".JPG") #IMG_1618
     
     
