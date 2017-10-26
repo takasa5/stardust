@@ -15,10 +15,10 @@ FIRSTL = 35 * 8
 LWEIGHT = 1
 CRADIUS = 3
 # TODO: 星が少なすぎても多すぎても調整するようにすべき？
-THREASH = 240 #(240)画像から検出したいおおよその星の数
+THREASH = 300 #(240)画像から検出したいおおよその星の数
 SIZE = 666 #画像サイズ(横)
 ARANGE = 3 #許容角度範囲(±)
-DEPTH = 5 #探索近隣星数上限
+DEPTH = 10 #探索近隣星数上限
 
 def scale_down(image, scale):
     hight = image.shape[0]
@@ -38,17 +38,17 @@ def detect_stars(image):
     """最適(？)スレッショルドを設定し、抽出した星座標のリストを返す"""
     flag = True
     thr = 100
+    gam, adapt = 1, 1
     
     #BIGMODE用処理
     global CRADIUS, LWEIGHT
-    if image.shape[0] > 2000 or image.shape[1] > 2000:
-        CRADIUS, LWEIGHT = 20, 5
+    if image.shape[0] > 1600 or image.shape[1] > 1600:
+        CRADIUS, LWEIGHT = int(image.shape[1]/250), int(image.shape[1]/1000)
     
     #make grayscale image
     img_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     while flag:
         stars = []
-        #flag = False
         ret, new = cv2.threshold(img_gray, thr, 255, cv2.THRESH_BINARY)
         #cv2.imshow("gray", new)
         
@@ -68,15 +68,26 @@ def detect_stars(image):
             else:
                 stars.append(np.array([cnt[0][0]], dtype='int32'))
         
-        if len(stars) > THREASH and thr <= 250:
-            #print("len:",len(stars))
+        if len(stars) > THREASH*adapt and thr <= 250:
+            print("len:",len(stars))
             thr += 10
             del new
             #print("threshold:",thr)
+        elif len(stars) == 0: #thr=260になるとここにくる
+            thr = 250
+            gam *= 0.8
+            adapt *= 1.2
+            print("try gamma:", gam)
+            del new, img_gray
+            dark = darken(image, gam)
+            img_gray = cv2.cvtColor(dark, cv2.COLOR_RGB2GRAY)
         else:
             #print("len:",len(stars))
             flag = False
-
+    print("threashold:",thr)
+    print("len:",len(stars))
+    return stars
+    """
     if len(stars) == 0:
         # TODO:0になったら直前のスレッショルドでやるようにした
         # TODO:というよりも画像全体を暗くしてリトライすべきなのでは？
@@ -104,7 +115,7 @@ def detect_stars(image):
     else:
         print("threashold:",thr)
         return stars
-
+    """
 
 def on_mouse(event, x, y, flag, param):
     """マウスクリック時"""
@@ -117,8 +128,9 @@ def search_near_star(x, y, i, stars):
     """(x, y)にi番目(0オリジン)に近いものを返す"""
     if i >= len(stars):
         print("Can't detect")
-        sys.exit(1)
-    
+        #sys.exit(1)
+        return np.array([None, None])
+
     p = np.array([x, y])
     L = np.array([])
     for star in stars:
@@ -131,17 +143,18 @@ def draw_line(img, stars, constellation):
     C = constellation
     
     navg = 0
+    med = []
     ma = []
     for star in stars:
         s = np.array([star[0][0], star[0][1]])
         ns = search_near_star(s[0], s[1], 1, stars)
         ms = search_near_star(s[0], s[1], int(DEPTH/2), stars)
         ma.append(np.linalg.norm(ms - s))
-        navg += np.linalg.norm(ns - s)
-    navg /= len(stars)
+        med.append(np.linalg.norm(ns - s))
+    #navg /= len(stars)
+    lowmed = np.median(med)
     midmax = np.amax(ma)
-    print("navg, midmax:", navg, midmax)
-    
+
     stella_count = 0
     stella_data = []
     for star in stars:
@@ -153,7 +166,7 @@ def draw_line(img, stars, constellation):
             p1 = search_near_star(std[0], std[1], i, stars)[0]
             d1 = np.linalg.norm(std-p1)
            
-            if d1 < navg:
+            if d1 < lowmed:
                 i += 1
                 continue
             elif i > DEPTH or d1 > midmax:
@@ -185,27 +198,7 @@ def draw_line(img, stars, constellation):
                 C["itr"] = 0
                 # TODO:全可能性を描画してみる
                 i += 1
-                #return
-    """作業中 trac_const-を最後に描くように変えないといけない
-    while stella_count != 1:
-        if stella_count == 0:
-            printf("failed to find constellation")
-            return
-        else:
-            #星リスト再取得
-            print("multi hit. retry")
-            im_gm = darken(img, 0.3)
-            new_stars = detect_stars(im_gm)
-            #見つかっている基準点、次の点でためす
-            for i in range(stella_count)
-                std, p1 = stella_data[i][0], stella_data[i][1]
-                d1 = np.linalg.norm(std-p1)
-                point, bector = p1, p1-std
-                point, bector = trac_constellation(False, img, point, bector, std, d1, stars, C)
-                if point is None:
-                    continue
-                else:
-    """
+                return #コメントアウトで全部描画
     print("visited all stars")
 
 def line_adjust(start, end):
@@ -227,7 +220,7 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
     #if C["itr"] != 0:
     #    print(C["itr"])
     dist, ang, rd = C["D"][C["itr"]], C["ANGS"][C["itr"]], C["STD_D"][C["itr"]]
-    
+    #sta = C["STD_A"][C["itr"]]
     i, p, d = 0, 0, 0
     angles = []
     A = []
@@ -248,18 +241,24 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
             theta = rad * 180 / np.pi
             d_s = np.linalg.norm(p-std_p)/std_d
             # TODO:角度の許容範囲
-            if (theta > ang-ARANGE and theta < ang+ARANGE)  and (d_s > rd*0.9 and d_s < rd*1.1): 
+            if ((theta > ang-ARANGE and theta < ang+ARANGE) and
+                (d_s > rd*0.9 and d_s < rd*1.1)): 
                 A.append(theta)
                 angles.append(abs(theta-ang))
                 points.append([p[0], p[1]])
                 
-                print("in", p, theta, sep=" ")
+                print(i, "in", p, theta, sep=" ")
                 p = search_near_star(bp[0], bp[1], i, stars)[0]
                 d = np.linalg.norm(bp - p)
                 i += 1
             else:
-                print("out", p, "(theta, d_s)", (theta, d_s), sep=" ")
+                print(i, "out", p, "(theta, d_s)", (theta, d_s), sep=" ")
                 p = search_near_star(bp[0], bp[1], i, stars)[0]
+                if p is None:
+                    # TODO:応急
+                    C["itr"] = 0
+                    C["BP"].clear()
+                    break
                 d = np.linalg.norm(bp - p)
                 i += 1
     if len(angles) == 0:
@@ -272,7 +271,6 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
         return (None, None)
     else:
         tp = np.array(points[np.argmin(angles)])
-        #print("w:", tp)
 
         if write:
             print("writed:", tp)
@@ -301,26 +299,27 @@ if __name__ == '__main__':
     #計算はSMALLMODEで、1614でやるとよい
     # TODO: ガンマ補正のタイミングと掛け方を考える
     start = time.time()
-    IMAGE_FILE = "test" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "4368" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
     img = cv2.imread(f)
 
-    cs = Constellation.Sagittarius()
-    
+    #cs = Constellation.Sagittarius()
+    cs = Constellation.Perseus()
+    """
     #BIGMODE
     stars = detect_stars(img)
     draw_line(img, stars, cs.get())
     img = scale_down(img, img.shape[1]/SIZE)
-    
     """
+    
     #SMALLMODE
     img = scale_down(img, img.shape[1]/SIZE)
     stars = detect_stars(img)
     draw_line(img, stars, cs.get())
-    """
+    
     cv2.namedWindow("stardust", cv2.WINDOW_NORMAL)
     cv2.imshow("stardust", img)
     cv2.setMouseCallback("stardust", on_mouse, stars)
     print("time:", time.time()-start)
-    #cv2.imwrite("SGT_" + IMAGE_FILE + ".JPG", img)
+    cv2.imwrite("PRS_" + IMAGE_FILE + ".JPG", img)
     cv2.waitKey()
