@@ -9,10 +9,10 @@ WHITE = (255, 255, 255)
 LWEIGHT = 1
 CRADIUS = 3
 # TODO: 星が少なすぎても多すぎても調整するようにすべき？
-THREASH = 1000 #画像から検出したいおおよその星の数→光害除去用
+THREASH = 500 #画像から検出したいおおよその星の数→光害除去用
 SIZE = 666 #画像サイズ(横)
 ARANGE = 4 #許容角度範囲(±)
-DEPTH = 10 #探索近隣星数上限
+DEPTH = 5 #探索近隣星数上限
 star_count = 0
 
 def scale_down(image, scale):
@@ -80,6 +80,7 @@ def detect_stars(image):
         else:
             #print("len:",len(stars))
             flag = False
+    #星のうち明るいほうから順に100取り出す
     r_areas_arg = np.argsort(areas)[::-1]
     for i in range(100):
         astars.append(stars[r_areas_arg[i]])
@@ -137,13 +138,15 @@ def draw_line(img, stars, constellation):
             #2番目の星候補
             p1 = search_near_star(std[0], std[1], i, stars)[0]
             d1 = np.linalg.norm(std-p1)
-           
+            """
             if d1 < lowmed:
                 i += 1
                 continue
             elif i > DEPTH or d1 > midmax:
                 break #次の根(基準星)へ
-
+            """
+            if i > DEPTH:
+                break
             #2番目の星から先で星座が書けるかどうかをチェック
             point, bector = p1, p1-std
             likelihood, star_count = 0, 0
@@ -168,13 +171,15 @@ def draw_line(img, stars, constellation):
                     stella_data.append([p1, p1-std, std, d1])
                     like_list.append(l_c)
                 i += 1
-
-    I = stella_data[np.argmin(like_list)]
-    sp, ep = line_adjust(I[2], I[0])
-    cv2.line(img, sp, ep, WHITE, LWEIGHT, cv2.LINE_AA)
-    cv2.circle(img, (I[2][0],I[2][1]), CRADIUS, WHITE, LWEIGHT, cv2.LINE_AA)
-    trac_constellation(True, img, I[0], I[1], I[2], I[3], stars, C)
     print("visited all stars")
+    if len(like_list) > 0:
+        I = stella_data[np.argmin(like_list)]
+        sp, ep = line_adjust(I[2], I[0])
+        cv2.line(img, sp, ep, WHITE, LWEIGHT, cv2.LINE_AA)
+        cv2.circle(img, (I[2][0],I[2][1]), CRADIUS, WHITE, LWEIGHT, cv2.LINE_AA)
+        trac_constellation(True, img, I[0], I[1], I[2], I[3], stars, C)
+    else:
+        print("failed to detect")
 
 def line_adjust(start, end):
     """線分を円周の部分までで止めるような始点、終点を返す"""
@@ -280,20 +285,13 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
         return trac_constellation(write, img, tp, tp-bp, std_p, std_d, stars, C)
 
 if __name__ == '__main__':
-    #計算はSMALLMODEで、1614でやるとよい
-    # TODO: ガンマ補正のタイミングと掛け方を考える
     start = time.time()
-    IMAGE_FILE = "1916" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "6860" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
     img = cv2.imread(f)
-    cs = Constellation.Sagittarius()
-    #cs = Constellation.Perseus()
-    """
-    ksize = int(img.shape[1]/500)
-    if ksize % 2 != 1:
-        ksize += 1
-    medimg = cv2.medianBlur(img, 3)
-    """
+    #cs = Constellation.Sagittarius()
+    cs = Constellation.Perseus()
+
     #BIGMODE
     stars = detect_stars(img)
     draw_line(img, stars, cs.get())
