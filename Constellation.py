@@ -39,6 +39,9 @@ class Sagittarius:
     def get(self):
         return Sagittarius.SGT
 
+    def get_name(self):
+        return "SGT"
+
 class Perseus:
     PRS3 = {"itr":0,
             "ANGS":[112.5, 11.1, 22, 19.4, 33.6, 94.5],
@@ -61,3 +64,6 @@ class Perseus:
         
     def get(self):
         return Perseus.PRS
+
+    def get_name(self):
+        return "PRS"
