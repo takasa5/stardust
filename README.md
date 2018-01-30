@@ -1,5 +1,5 @@
 # stardust
-星座検出プログラム(β)  
+星座検出プログラム  
 これが  
 ![input](/example_input.JPG)  
 こんなかんじになる  
