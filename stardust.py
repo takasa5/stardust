@@ -8,11 +8,11 @@ END = (2**16, 2**16)
 WHITE = (255, 255, 255)
 LWEIGHT = 1
 CRADIUS = 3
-# TODO: 星が少なすぎても多すぎても調整するようにすべき？
-THREASH = 500 #画像から検出したいおおよその星の数→光害除去用
+THREASH = 1000 #画像から検出したいおおよその星の数→光害除去用
 SIZE = 666 #画像サイズ(横)
 ARANGE = 4 #許容角度範囲(±)
 DEPTH = 5 #探索近隣星数上限
+STARSIZE = 120
 star_count = 0
 
 def scale_down(image, scale):
@@ -37,8 +37,8 @@ def detect_stars(image):
     
     #BIGMODE用処理
     global CRADIUS, LWEIGHT
-    if image.shape[0] > 1600 or image.shape[1] > 1600:
-        CRADIUS, LWEIGHT = int(image.shape[1]/250), int(image.shape[1]/1000)
+    #if min(img.shape[0], img.shape[1]) > 1600:
+    CRADIUS, LWEIGHT = int(max(img.shape[0], img.shape[1])/250), int(max(img.shape[0], img.shape[1])/1000)
     
     #輪郭検出用グレースケール画像生成
     astars = []
@@ -50,7 +50,7 @@ def detect_stars(image):
         #輪郭検出
         det_img, contours, hierarchy = cv2.findContours(new, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         im = cv2.drawContours(image.copy(), contours, -1, (0, 255, 0), LWEIGHT) 
-        cv2.imshow("gray", scale_down(im, im.shape[1]/SIZE))
+        cv2.imshow("gray", scale_down(im, max(img.shape[0], img.shape[1])/SIZE))
         cv2.waitKey(1)
 
         for cnt in contours:
@@ -64,7 +64,7 @@ def detect_stars(image):
                 stars.append(np.array([cnt[0][0]], dtype='int32'))
 
         if len(stars) > THREASH*adapt and thr <= 250:
-            print("len:",len(stars))
+            #print("len:",len(stars))
             thr += 10
             del new
             #print("threshold:",thr)
@@ -73,7 +73,7 @@ def detect_stars(image):
             #ガンマを強くしつつ、星の数の制限を緩める
             gam *= 0.8
             adapt *= 1.2
-            print("try gamma:", gam)
+            #print("try gamma:", gam)
             del new, img_gray
             dark = darken(image, gam)
             img_gray = cv2.cvtColor(dark, cv2.COLOR_RGB2GRAY)
@@ -82,10 +82,10 @@ def detect_stars(image):
             flag = False
     #星のうち明るいほうから順に100取り出す
     r_areas_arg = np.argsort(areas)[::-1]
-    for i in range(100):
+    for i in range(STARSIZE):
         astars.append(stars[r_areas_arg[i]])
-    print("threashold:",thr)
-    print("len:",len(astars))
+    #print("threashold:",thr)
+    #print("len:",len(astars))
     return astars
 
 def on_mouse(event, x, y, flag, param):
@@ -133,7 +133,6 @@ def draw_line(img, stars, constellation):
         star_count = 1
         std = np.array([star[0][0], star[0][1]])
         i = 1
-        #print(std)
         while True:
             #2番目の星候補
             p1 = search_near_star(std[0], std[1], i, stars)[0]
@@ -149,11 +148,12 @@ def draw_line(img, stars, constellation):
                 break
             #2番目の星から先で星座が書けるかどうかをチェック
             point, bector = p1, p1-std
+            #print(p1)
             likelihood, star_count = 0, 0
             point, bector = trac_constellation(False, img, point, bector, std, d1, stars, C)
             if star_count > 0:
                 l_c = likelihood/star_count
-                print("L:",likelihood,"C:",star_count,"L/C:",l_c)
+                #print("L:",likelihood,"C:",star_count,"L/C:",l_c)
             C["itr"] = 0
             #第一返値で見つかってるかチェック
             if point is None: #見つかってなければ次の星へ
@@ -193,7 +193,6 @@ def line_adjust(start, end):
 
     return ((int(restart[0]), int(restart[1])), (int(reend[0]), int(reend[1])))
 
-
 def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
     """(描画判断、描画先、前の座標、前ベクトル、基準点、基準距離、星座標リスト、星座dic)"""
     C = constellation
@@ -207,9 +206,14 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
     global star_count
     while d/std_d < dist * 0.9:
         p = search_near_star(bp[0], bp[1], i, stars)[0]
-        d = np.linalg.norm(bp - p)
-        i += 1
+        if p is None:
+            break
+        else:
+            d = np.linalg.norm(bp - p)
+            i += 1
     while d/std_d < dist * 1.1:
+        if p is None:
+            break
         dot = np.dot(bec, p-bp)
         cos = dot / (d * np.linalg.norm(bec))
         if cos > 1 or cos < -1:
@@ -228,18 +232,21 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
                 lengths.append(abs(d_s-rd))
                 points.append([p[0], p[1]])
                 
-                #print(i, "in", p, theta, sep=" ")
-                p = search_near_star(bp[0], bp[1], i, stars)[0]
-                d = np.linalg.norm(bp - p)
-                i += 1
-            else:
-                #print(i, "out", p, "(theta, d_s)", (theta, d_s), sep=" ")
+                #print(bp, i, "in", p,"(theta, d_s)", (theta, d_s),d/std_d, sep=" ")
                 p = search_near_star(bp[0], bp[1], i, stars)[0]
                 if p is None:
                     # TODO:応急
-                    C["itr"] = 0
-                    C["BP"].clear()
-                    break
+                    print("miss")
+                    return (None, None)
+                d = np.linalg.norm(bp - p)
+                i += 1
+            else:
+                #print(bp, i, "out", p, "(theta, d_s)", (theta, d_s), sep=" ")
+                p = search_near_star(bp[0], bp[1], i, stars)[0]
+                if p is None:
+                    # TODO:応急
+                    print("miss")
+                    return (None, None)
                 d = np.linalg.norm(bp - p)
                 i += 1
     if len(angles) == 0:
@@ -286,24 +293,24 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
 
 if __name__ == '__main__':
     start = time.time()
-    IMAGE_FILE = "6860" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "1499" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
     img = cv2.imread(f)
-    #cs = Constellation.Sagittarius()
-    cs = Constellation.Perseus()
-
+    cs = Constellation.Sagittarius()
+    #cs = Constellation.Perseus()
+    
     #BIGMODE
     stars = detect_stars(img)
     draw_line(img, stars, cs.get())
-    img = scale_down(img, img.shape[1]/SIZE)
+    img = scale_down(img, max(img.shape[0], img.shape[1])/SIZE)
     """
     
     #SMALLMODE
-    img = scale_down(img, img.shape[1]/SIZE)
+    img = scale_down(img, max(img.shape[0], img.shape[1])/SIZE)
     stars = detect_stars(img)
     draw_line(img, stars, cs.get())
     """
-    cv2.namedWindow("stardust", cv2.WINDOW_NORMAL)
+    #cv2.namedWindow("stardust", cv2.WINDOW_NORMAL)
     cv2.imshow("stardust", img)
     cv2.setMouseCallback("stardust", on_mouse, stars)
     print("time:", time.time()-start)
