@@ -3,3 +3,6 @@ BIGMODE(1023)/
 *.mdp
 source/
 !example*
+.vscode/
+__pycache__/
+pylintrc
