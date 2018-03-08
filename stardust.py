@@ -59,12 +59,13 @@ def detect_stars(image):
         cv2.waitKey(1)
         """
         print(len(contours))
+        # TODO: ここのマジックナンバーなんとかする
         if len(contours) < 400:
             thr -= 10
             continue
         #else:
             #return
-        
+        #各輪郭から重心および面積を算出
         for cnt in contours:
             M = cv2.moments(cnt)
             areas.append(M['m00'])
@@ -362,7 +363,7 @@ def stardust_trace(cv2img, constellation):
 
 if __name__ == '__main__':
     start = time.time()
-    IMAGE_FILE = "1614" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "0038" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
     img = cv2.imread(f)
     cs = Constellation.Sagittarius()
