@@ -36,6 +36,7 @@ class Sagittarius:
                     "STD_A":[85, 133, 96, 66],
                     "JCT":[0, 2], "BP":[], "REST":[self.SGT2, self.SGT4], "N":4
                    }
+                
     
     def get(self):
         return self.SGT

@@ -175,9 +175,11 @@ def draw_line(img, stars, constellation):
     C = constellation
     global likelihood
     global star_count
+    """
     navg = 0
     med = []
     ma = []
+    
     for star in stars:
         s = np.array([star[0][0], star[0][1]])
         ns = search_near_star(s[0], s[1], 1, stars)
@@ -187,7 +189,7 @@ def draw_line(img, stars, constellation):
     #navg /= len(stars)
     lowmed = np.median(med)
     midmax = np.amax(ma)
-
+    """
     stella_count = 0
     stella_data, like_list = [], []
     for star in stars:
@@ -197,7 +199,7 @@ def draw_line(img, stars, constellation):
         while True:
             #2番目の星候補
             p1 = search_near_star(std[0], std[1], i, stars)[0]
-            d1 = np.linalg.norm(std-p1)
+            d1 = np.linalg.norm(p1-std)
             """
             if d1 < lowmed:
                 i += 1
@@ -284,8 +286,10 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
             d = np.linalg.norm(bp - p)
             i += 1
         else:
-            rad = math.acos(cos)
-            theta = rad * 180 / np.pi
+            #rad = math.acos(cos)
+            #theta = rad * 180 / np.pi
+            rad = np.arccos(cos)
+            theta = np.rad2deg(rad)
             d_s = np.linalg.norm(p-std_p)/std_d
             # TODO:角度の許容範囲
             if ((theta > ang-ARANGE and theta < ang+ARANGE) and
@@ -333,6 +337,7 @@ def trac_constellation(write, img, bp, bec, std_p, std_d, stars, constellation):
         if star_count <= 4:
             likelihood += (abs(d/std_d - dist) + np.min(angles) + lengths[np.argmin(angles)])/(star_count/C["N"])
         if write:
+            print("ANGS:", A[np.argmin(angles)])
             #print("writed:", tp)
             sp, ep = line_adjust(bp, tp)
             cv2.line(img, sp, ep, WHITE, LWEIGHT, cv2.LINE_AA)
@@ -363,7 +368,7 @@ def stardust_trace(cv2img, constellation):
 
 if __name__ == '__main__':
     start = time.time()
-    IMAGE_FILE = "0038" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "1499" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
     img = cv2.imread(f)
     cs = Constellation.Sagittarius()
