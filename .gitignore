@@ -1,6 +1,8 @@
 BIGMODE(1023)/
 *.JPG
+*.png
 *.mdp
+arc*
 source/
 !example*
 .vscode/

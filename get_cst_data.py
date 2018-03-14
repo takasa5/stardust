@@ -19,16 +19,18 @@ if __name__ == "__main__":
     
     x_list, y_list = [], []
     ZOOM = 1
-    STD, STDP = 1.08, None
+    STD, STDP = 1, None
     b_bec = None
     written_list = []
     ANGS, D, STD_D = [], [], []
     for d in tgt_cst:
         x1, x2 = -d[0] * ZOOM, -d[2] * ZOOM
-        #y1, y2 = d[1] * ZOOM, d[3] * ZOOM
+        y1, y2 = d[1] * ZOOM, d[3] * ZOOM
         #メルカトル図法
-        y1 = np.log(np.tan(np.pi/4 + np.deg2rad(d[1])/2))
-        y2 = np.log(np.tan(np.pi/4 + np.deg2rad(d[3])/2))
+        #x1 += 300
+        #x2 += 300
+        #y1 = np.log(np.tan(np.pi/4 + np.deg2rad(d[1])/2))
+        #y2 = np.log(np.tan(np.pi/4 + np.deg2rad(d[3])/2))
         
         #正距方位図法
         #x1 = - np.cos(np.deg2rad(d[0] - 270)) * (90 - d[1])
@@ -48,7 +50,7 @@ if __name__ == "__main__":
             ang = round(np.rad2deg(rad), 1)
             y1_buf = y1
             while y1_buf in written_list:
-                y1_buf = y1_buf + 0.01
+                y1_buf = y1_buf + 1
             plt.text(x1, y1_buf, str(ang), color='g')
             written_list.append(y1_buf)
             std_d = np.linalg.norm(bec2 - STDP) / STD
@@ -72,4 +74,6 @@ if __name__ == "__main__":
                }
     print(ret_dict)
     plt.scatter(x_list, y_list)
+    plt.axis("equal")
     plt.show()    
+    
