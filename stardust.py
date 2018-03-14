@@ -336,7 +336,7 @@ class Stardust:
             return self.__trac_constellation(write, tp, tp-bp, std_p, std_d, C)
 
 if __name__ == '__main__':
-    IMAGE_FILE = "test" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "1614" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
 
     start = time.time()    
@@ -347,6 +347,7 @@ if __name__ == '__main__':
     print("elapsed:", end - start)
     
     ret = sd.get_image()
+    cv2.imwrite("example_output.jpg", ret)
     cv2.namedWindow("return", cv2.WINDOW_NORMAL)
     cv2.imshow("return", ret)
     cv2.setMouseCallback("return", sd.on_mouse)
