@@ -14,6 +14,7 @@ class Stardust:
         self.angle_depth = 5 # Param:角度誤差の許容範囲(±)
         self.stars = self.__detect_stars()
         self.written_img = None
+        self.stars_dist = {"now": np.array([-1, -1])}
         
     def get_image(self):
         return self.written_img
@@ -45,7 +46,6 @@ class Stardust:
         self.l_weight = int(max(self.image.shape[0], self.image.shape[1])/1000)
         
         #輪郭検出用グレースケール画像生成
-        astars = []
         img_gray = cv2.cvtColor(self.image, cv2.COLOR_RGB2GRAY)
         del_img = self.image.copy()
         firstflag = True
@@ -121,10 +121,9 @@ class Stardust:
             
         #星のうち明るいほうから順に取り出す
         r_areas_arg = np.argsort(areas)[::-1] #面積の大きい順にインデックスをリストに格納
-        for i in range(self.star_num):
-            astars.append(stars[r_areas_arg[i]])
+        astars = [stars[r_areas_arg[i]] for i in range(self.star_num)]
+
         print("threashold:",thr)
-        print("len:",len(astars))
         
         tmp = self.image.copy()
         for star in astars:
@@ -149,12 +148,14 @@ class Stardust:
             return np.array([None, None])
 
         p = np.array([x, y])
-        L = np.array([])
-        for star in self.stars:
-            L = np.append(L, np.linalg.norm(star-p))
-        index = np.array(L)
-        index = np.argsort(index)
-        return self.stars[index[i]]
+        if np.allclose(self.stars_dist["now"], p):
+            return self.stars[self.stars_dist["index"][i]]
+        else:
+            L = [np.linalg.norm(star-p) for star in self.stars]
+            index = np.array(L)
+            index = np.argsort(index)
+            self.stars_dist["index"] = index   #メモ化
+            return self.stars[index[i]]
 
     def draw_line(self, constellation):
         self.written_img = self.image.copy()
@@ -336,7 +337,7 @@ class Stardust:
             return self.__trac_constellation(write, tp, tp-bp, std_p, std_d, C)
 
 if __name__ == '__main__':
-    IMAGE_FILE = "1614" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "1916" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
 
     start = time.time()    
@@ -347,7 +348,6 @@ if __name__ == '__main__':
     print("elapsed:", end - start)
     
     ret = sd.get_image()
-    cv2.imwrite("example_output.jpg", ret)
     cv2.namedWindow("return", cv2.WINDOW_NORMAL)
     cv2.imshow("return", ret)
     cv2.setMouseCallback("return", sd.on_mouse)
