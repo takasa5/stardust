@@ -8,7 +8,10 @@ SIZE = 666 #画像サイズ(横)
 
 class Stardust:
     def __init__(self, image_name):
-        self.image = cv2.imread(image_name)
+        if isinstance(image_name, np.ndarray): # 画像が直接渡された場合
+            self.image = image_name
+        else:
+            self.image = cv2.imread(image_name)
         self.star_num = 120 # Param:取り出す星の数
         self.star_depth = 5 # Param:近隣探索数の上限
         self.angle_depth = 5 # Param:角度誤差の許容範囲(±)
@@ -19,11 +22,11 @@ class Stardust:
     def get_image(self):
         return self.written_img
 
-    def scale_down(self, scale):
+    def scale_down(self, img, scale):
         """入力画像をscale分の1に縮小"""
-        hight = self.image.shape[0]
-        width = self.image.shape[1]
-        small = cv2.resize(self.image, (round(width/scale), round(hight/scale)))
+        hight = img.shape[0]
+        width = img.shape[1]
+        small = cv2.resize(img, (round(width/scale), round(hight/scale)))
         #self.image = small
         return small
 
@@ -52,7 +55,7 @@ class Stardust:
         while flag:
             stars, areas = [], []
             ret, new = cv2.threshold(img_gray, thr, 255, cv2.THRESH_BINARY)
-            cv2.imshow("gray", self.scale_down(max(new.shape[0], new.shape[1])/666))
+            cv2.imshow("gray", self.scale_down(new, max(new.shape[0], new.shape[1])/666))
             cv2.waitKey(1)
             #輪郭検出
             det_img, contours, hierarchy = cv2.findContours(new, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -78,7 +81,7 @@ class Stardust:
                 if M['m00'] != 0:
                     cx = int(M['m10'] / M['m00'])
                     cy = int(M['m01'] / M['m00'])
-                    stars.append(np.array([[cx, cy]], dtype='int32'))
+                    stars.append(np.array([cx, cy], dtype='int32'))
                 else:
                     stars.append(np.array([cnt[0][0]], dtype='int32'))
             maxarea_index = np.argmax(areas)
@@ -107,13 +110,13 @@ class Stardust:
                 del_img = cv2.rectangle(del_img, (x, y), (x+w, y+h), (255, 0, 0), -1)
                 img_gray = cv2.cvtColor(del_img, cv2.COLOR_RGB2GRAY)
                 # DEBUG
-                cv2.imshow("deleted", self.scale_down(max(del_img.shape[0], del_img.shape[1])/666))
+                cv2.imshow("deleted", self.scale_down(del_img, max(del_img.shape[0], del_img.shape[1])/666))
                 cv2.waitKey(1)
 
                 continue
             else:
                 # DEBUG
-                cv2.imshow("deleted", self.scale_down(max(del_img.shape[0], del_img.shape[1])/666))
+                cv2.imshow("deleted", self.scale_down(del_img, max(del_img.shape[0], del_img.shape[1])/666))
                 cv2.waitKey(1)
             #ここまで
             
@@ -127,9 +130,9 @@ class Stardust:
         
         tmp = self.image.copy()
         for star in astars:
-            cv2.circle(tmp, (star[0][0],star[0][1]), 2, (0,0,255), -1, cv2.LINE_AA)
+            cv2.circle(tmp, (star[0],star[1]), 2, (0,0,255), -1, cv2.LINE_AA)
         # DEBUG
-        cv2.imshow("finalcnt", self.scale_down(max(tmp.shape[0], tmp.shape[1])/SIZE))
+        cv2.imshow("finalcnt", self.scale_down(tmp, max(tmp.shape[0], tmp.shape[1])/SIZE))
         cv2.waitKey(1)
         return astars
 
@@ -166,11 +169,12 @@ class Stardust:
         stella_data, like_list = [], []
         for star in self.stars:
             self.star_count = 1
-            std = np.array([star[0][0], star[0][1]])
+            #std = np.array([star[0][0], star[0][1]])
+            std = star
             i = 1
             while True:
                 #2番目の星候補
-                p1 = self.search_near_star(std[0], std[1], i)[0]
+                p1 = self.search_near_star(std[0], std[1], i)
                 d1 = np.linalg.norm(p1-std)
                 if i > self.star_depth:
                     break
@@ -246,7 +250,7 @@ class Stardust:
         A = []
         points = []
         while d/std_d < dist * 0.9:
-            p = self.search_near_star(bp[0], bp[1], i)[0]
+            p = self.search_near_star(bp[0], bp[1], i)
             if p is None:
                 break
             else:
@@ -258,7 +262,7 @@ class Stardust:
             dot = np.dot(bec, p-bp)
             cos = dot / (d * np.linalg.norm(bec))
             if cos > 1 or cos < -1:
-                p = self.search_near_star(bp[0], bp[1], i)[0]
+                p = self.search_near_star(bp[0], bp[1], i)
                 d = np.linalg.norm(bp - p)
                 i += 1
             else:
@@ -273,10 +277,10 @@ class Stardust:
                     A.append(theta)
                     angles.append(abs(theta-ang))
                     lengths.append(abs(d_s-rd))
-                    points.append([p[0], p[1]])
+                    points.append(p)
                     #if np.allclose(bp, [560, 1204]):
                     #    print(bp, i, "in", p,"(theta, d_s)", (theta, d_s),d/std_d, sep=" ")
-                    p = self.search_near_star(bp[0], bp[1], i)[0]
+                    p = self.search_near_star(bp[0], bp[1], i)
                     if p is None:
                         # TODO:応急
                         print("miss")
@@ -286,7 +290,7 @@ class Stardust:
                 else:
                     #if np.allclose(bp, [560, 1204]):
                     #    print(bp, i, "out", p, "(theta, d_s)", (theta, d_s), sep=" ")
-                    p = self.search_near_star(bp[0], bp[1], i)[0]
+                    p = self.search_near_star(bp[0], bp[1], i)
                     if p is None:
                         # TODO:応急
                         print("miss")
@@ -337,7 +341,7 @@ class Stardust:
             return self.__trac_constellation(write, tp, tp-bp, std_p, std_d, C)
 
 if __name__ == '__main__':
-    IMAGE_FILE = "1916" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "dzlm" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
 
     start = time.time()    
@@ -350,5 +354,6 @@ if __name__ == '__main__':
     ret = sd.get_image()
     cv2.namedWindow("return", cv2.WINDOW_NORMAL)
     cv2.imshow("return", ret)
+    #cv2.imwrite(cs.get_name()+"_"+IMAGE_FILE+".JPG", ret)
     cv2.setMouseCallback("return", sd.on_mouse)
     cv2.waitKey()
