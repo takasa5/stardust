@@ -7,14 +7,20 @@ import Constellation
 SIZE = 666 #画像サイズ(横)
 
 class Stardust:
-    def __init__(self, image_name):
+    def __init__(self, image_name,
+                 star_num=120,
+                 star_depth=5,
+                 angle_depth=5,
+                 likelihood_thr=2
+                ):
         if isinstance(image_name, np.ndarray): # 画像が直接渡された場合
             self.image = image_name
         else:
             self.image = cv2.imread(image_name)
-        self.star_num = 120 # Param:取り出す星の数
-        self.star_depth = 5 # Param:近隣探索数の上限
-        self.angle_depth = 5 # Param:角度誤差の許容範囲(±)
+        self.star_num = star_num # Param:取り出す星の数
+        self.star_depth = star_depth # Param:近隣探索数の上限
+        self.angle_depth = angle_depth # Param:角度誤差の許容範囲(±)
+        self.likelihood_thr = likelihood_thr # Param:尤度の許容値
         self.stars = self.__detect_stars()
         self.written_img = None
         self.stars_dist = {"now": np.array([-1, -1])}
@@ -44,7 +50,7 @@ class Stardust:
         thr = 250
         gam, adapt = 1, 1
         
-        #BIGMODE用処理
+        # 円の半径と線の太さをちょうどよくする
         self.c_radius = int(max(self.image.shape[0], self.image.shape[1])/250)
         self.l_weight = int(max(self.image.shape[0], self.image.shape[1])/1000)
         
@@ -85,23 +91,22 @@ class Stardust:
                 else:
                     stars.append(np.array([cnt[0][0]], dtype='int32'))
             maxarea_index = np.argmax(areas)
-            #画像の大半を消去してしまうようならthrあげるべき/削除方式をやめるべき？
+            # TODO:画像の大半を消去してしまうようならthrあげるべき/削除方式をやめるべき？
             """
             if areas[maxarea_index] > image.shape[0] * image.shape[1] / 6:
                 thr += 10
                 continue
             """
-            #偏差を求める
+            # 偏差を求める
             if firstflag:
                 area_std = np.std(areas)
                 print("std:", area_std)
                 #q75, q25 = np.percentile(areas, [75, 25])
                 #iqr = q75 - q25
                 firstflag = False
-            #面積の最大値周辺は見ない：ここから
-            #if areas[maxarea_index] > 2.5 * area_std:
-            #分散が大きい場合、外れ値を削除していく
-            # TODO: 楕円で削除
+            # 面積の最大値周辺は見ない：ここから
+            # 分散が大きい場合、外れ値を削除していく
+            # TODO: 楕円で削除してみる
             if area_std > 100 and areas[maxarea_index] > 2.5 * area_std:
                 cnt = contours[maxarea_index]
                 x, y, w, h = cv2.boundingRect(cnt)
@@ -127,7 +132,7 @@ class Stardust:
         astars = [stars[r_areas_arg[i]] for i in range(self.star_num)]
 
         print("threashold:",thr)
-        
+        # DEBUG
         tmp = self.image.copy()
         for star in astars:
             cv2.circle(tmp, (star[0],star[1]), 2, (0,0,255), -1, cv2.LINE_AA)
@@ -141,16 +146,15 @@ class Stardust:
         #左クリックで最近傍の星出力
         if event == cv2.EVENT_LBUTTONDOWN:
             print("mouse:", x, y, sep=' ', end='\n')
-            print(self.search_near_star(x, y, 0))
+            # print(self.search_near_star(x, y, 0))
 
-    def search_near_star(self, x, y, i):
+    def search_near_star(self, p, i):
         """(x, y)にi番目(0オリジン)に近いものを返す"""
         if i >= len(self.stars):
             print("Can't detect")
             #sys.exit(1)
             return np.array([None, None])
 
-        p = np.array([x, y])
         if np.allclose(self.stars_dist["now"], p):
             return self.stars[self.stars_dist["index"][i]]
         else:
@@ -174,7 +178,7 @@ class Stardust:
             i = 1
             while True:
                 #2番目の星候補
-                p1 = self.search_near_star(std[0], std[1], i)
+                p1 = self.search_near_star(std, i)
                 d1 = np.linalg.norm(p1-std)
                 if i > self.star_depth:
                     break
@@ -190,9 +194,9 @@ class Stardust:
                 #第一返値で見つかってるかチェック
                 if point is None: #見つかってなければ次の星へ
                     i += 1
-                else: #見つかったら
-                    if l_c < 1:
-                        #描く
+                else: # 見つかったら
+                    if l_c < self.likelihood_thr: # 一定以下の尤度なら即時描く
+                        print(l_c)
                         sp, ep = self.__line_adjust(std, p1)
                         cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
                         cv2.circle(self.written_img,
@@ -204,7 +208,7 @@ class Stardust:
                                   )
                         self.__trac_constellation(True, p1, p1-std, std, d1, C)
                         return
-                    elif l_c < 2 or self.star_count > C["N"]:
+                    elif l_c < self.likelihood_thr*2 or self.star_count > C["N"]: # 「一定の基準は越えるが、それらしいもの」は保存しておく
                         print(l_c)
                         stella_count += 1
                         stella_data.append([p1, p1-std, std, d1])
@@ -245,79 +249,69 @@ class Stardust:
         img = self.written_img
         dist, ang, rd = C["D"][C["itr"]], C["ANGS"][C["itr"]], C["STD_D"][C["itr"]]
 
-        i, p, d = 1, 0, 0
-        angles, lengths = [], []
-        A = []
+        i, p, d = 0, 0, 0
+        angle_diff, len_diff = [], []
+        angle_list = []
         points = []
+        # 近傍の星との距離がtarget distance(dist)の9割を越えるまで辿る
         while d/std_d < dist * 0.9:
-            p = self.search_near_star(bp[0], bp[1], i)
+            i += 1
+            p = self.search_near_star(bp, i)
             if p is None:
                 break
             else:
                 d = np.linalg.norm(bp - p)
-                i += 1
+                
+        # 9割を越えたら、1.1割を越えるまで辿る
         while d/std_d < dist * 1.1:
+            p = self.search_near_star(bp, i)
             if p is None:
                 break
+            d = np.linalg.norm(bp - p)
+            i += 1
             dot = np.dot(bec, p-bp)
             cos = dot / (d * np.linalg.norm(bec))
             if cos > 1 or cos < -1:
-                p = self.search_near_star(bp[0], bp[1], i)
-                d = np.linalg.norm(bp - p)
-                i += 1
+                continue
             else:
-                #rad = math.acos(cos)
-                #theta = rad * 180 / np.pi
                 rad = np.arccos(cos)
                 theta = np.rad2deg(rad)
-                d_s = np.linalg.norm(p-std_p)/std_d
-                # TODO:角度の許容範囲
-                if ((theta > ang-self.angle_depth and theta < ang+self.angle_depth) and
-                    (d_s > rd*0.9 and d_s < rd*1.1)): 
-                    A.append(theta)
-                    angles.append(abs(theta-ang))
-                    lengths.append(abs(d_s-rd))
+                d_s = np.linalg.norm(p - std_p)/std_d
+                # 角度が許容範囲であれば、後に使う値を取り出す
+                if ((theta > ang-self.angle_depth and theta < ang+self.angle_depth) 
+                    and (d_s > rd*0.9 and d_s < rd*1.1)): 
+                    # TODO:append地獄、ここを改善することでスピードアップできそう
+                    angle_list.append(theta) # 値確認用なので実運用時には消してもよい
+                    angle_diff.append(abs(theta - ang))
+                    len_diff.append(abs(d_s - rd))
                     points.append(p)
-                    #if np.allclose(bp, [560, 1204]):
-                    #    print(bp, i, "in", p,"(theta, d_s)", (theta, d_s),d/std_d, sep=" ")
-                    p = self.search_near_star(bp[0], bp[1], i)
-                    if p is None:
-                        # TODO:応急
-                        print("miss")
-                        return (None, None)
-                    d = np.linalg.norm(bp - p)
-                    i += 1
-                else:
-                    #if np.allclose(bp, [560, 1204]):
-                    #    print(bp, i, "out", p, "(theta, d_s)", (theta, d_s), sep=" ")
-                    p = self.search_near_star(bp[0], bp[1], i)
-                    if p is None:
-                        # TODO:応急
-                        print("miss")
-                        return (None, None)
-                    d = np.linalg.norm(bp - p)
-                    i += 1
-        if len(angles) == 0:
+                    
+        if len(angle_diff) == 0: # 一個も次の星らしき星が見つからなかった場合
             #print("itr:", C["itr"], "angles is empty", ang)
             C["itr"] = 0
             C["BP"].clear()
-            if write:
+            if write: # write=Trueのときにここに入るのは最後のみ(多分)なので円を描いておわる
                 # TODO:理想値を計算し線のみ描画
                 cv2.circle(img, (bp[0], bp[1]), self.c_radius, (255,255,255), self.l_weight, cv2.LINE_AA)
             # TODO:要検証 失敗時にも分岐を書く
-            #if write and (len(C["BP"]) > 0):
+            """
             if len(C["BP"]) > 0:
                 for (branch, rest) in zip(C["BP"], C["REST"]):
                     self.__trac_constellation(write, branch, tp-bp, std_p, std_d, rest)    
                 C["itr"] = 0
+            """
             return (None, None)
         else: #可能性のある星を検出できていた場合
-            tp = np.array(points[np.argmin(angles)])
+            tp = np.array(points[np.argmin(angle_diff)])
             self.star_count += 1
-            if self.star_count <= 4:
-                self.likelihood += (abs(d/std_d - dist) + np.min(angles) + lengths[np.argmin(angles)])/(self.star_count/C["N"])
+            # TODO: 尤度計算式は熟考すること
+            #if self.star_count <= 4:
+            self.likelihood += (abs(d/std_d - dist)
+                                + np.min(angle_diff)
+                                + len_diff[np.argmin(angle_diff)]
+                                ) / (self.star_count/C["N"])
             if write:
-                print("ANGS:", A[np.argmin(angles)])
+                print("ANGS:", angle_list[np.argmin(angle_diff)])
                 #print("writed:", tp)
                 sp, ep = self.__line_adjust(bp, tp)
                 cv2.line(img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
@@ -341,7 +335,8 @@ class Stardust:
             return self.__trac_constellation(write, tp, tp-bp, std_p, std_d, C)
 
 if __name__ == '__main__':
-    IMAGE_FILE = "dzlm" #スピード:test < 1618 <= 1614 << 1916
+    # TODO: mini だと動かない
+    IMAGE_FILE = "g002" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
 
     start = time.time()    

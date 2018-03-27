@@ -1,6 +1,7 @@
 
 #itr:どこの値を参照すべきかのイテレータ、書き込んだらインクリメント
 #ANGS:前ベクトルからの角度 STD_D:基準点からの距離 D:前の点との距離
+#JCT:分岐点 BP:戻る点の情報、実行時に追加される REST:残りの部分、JCTと対応
 
 class Sagittarius:
     def __init__(self):
