@@ -208,7 +208,8 @@ class Stardust:
                                   )
                         self.__trac_constellation(True, p1, p1-std, std, d1, C)
                         return
-                    elif l_c < self.likelihood_thr*2 or self.star_count > C["N"]: # 「一定の基準は越えるが、それらしいもの」は保存しておく
+                    # 「一定の基準は越えるが、それらしいもの」は保存しておく
+                    elif l_c < self.likelihood_thr*2 or self.star_count > C["N"]:
                         print(l_c)
                         stella_count += 1
                         stella_data.append([p1, p1-std, std, d1])
@@ -250,9 +251,7 @@ class Stardust:
         dist, ang, rd = C["D"][C["itr"]], C["ANGS"][C["itr"]], C["STD_D"][C["itr"]]
 
         i, p, d = 0, 0, 0
-        angle_diff, len_diff = [], []
-        angle_list = []
-        points = []
+        angle_diff = 400 # 適当な大きい値
         # 近傍の星との距離がtarget distance(dist)の9割を越えるまで辿る
         while d/std_d < dist * 0.9:
             i += 1
@@ -281,12 +280,15 @@ class Stardust:
                 if ((theta > ang-self.angle_depth and theta < ang+self.angle_depth) 
                     and (d_s > rd*0.9 and d_s < rd*1.1)): 
                     # TODO:append地獄、ここを改善することでスピードアップできそう
-                    angle_list.append(theta) # 値確認用なので実運用時には消してもよい
-                    angle_diff.append(abs(theta - ang))
-                    len_diff.append(abs(d_s - rd))
-                    points.append(p)
-                    
-        if len(angle_diff) == 0: # 一個も次の星らしき星が見つからなかった場合
+                    # 角度誤差が最小のものを記録しておく
+                    tmp_diff = abs(theta - ang)
+                    if tmp_diff < angle_diff:
+                        angle_abs = theta
+                        angle_diff = tmp_diff
+                        len_diff = abs(d_s - rd)
+                        best_point = p
+
+        if angle_diff == 400: # 一個も次の星らしき星が見つからなかった場合
             #print("itr:", C["itr"], "angles is empty", ang)
             C["itr"] = 0
             C["BP"].clear()
@@ -302,16 +304,16 @@ class Stardust:
             """
             return (None, None)
         else: #可能性のある星を検出できていた場合
-            tp = np.array(points[np.argmin(angle_diff)])
+            tp = np.array(best_point)
             self.star_count += 1
             # TODO: 尤度計算式は熟考すること
             #if self.star_count <= 4:
             self.likelihood += (abs(d/std_d - dist)
-                                + np.min(angle_diff)
-                                + len_diff[np.argmin(angle_diff)]
+                                + angle_diff
+                                + len_diff
                                 ) / (self.star_count/C["N"])
             if write:
-                print("ANGS:", angle_list[np.argmin(angle_diff)])
+                print("ANGS:", angle_abs)
                 #print("writed:", tp)
                 sp, ep = self.__line_adjust(bp, tp)
                 cv2.line(img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
@@ -336,7 +338,7 @@ class Stardust:
 
 if __name__ == '__main__':
     # TODO: mini だと動かない
-    IMAGE_FILE = "g002" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "0038" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
 
     start = time.time()    
