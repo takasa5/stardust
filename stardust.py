@@ -17,6 +17,9 @@ class Stardust:
             self.image = image_name
         else:
             self.image = cv2.imread(image_name)
+        # 小さすぎたら拡大
+        if max(self.image.shape[0], self.image.shape[1]) < 1200:
+            self.image = self.scale_down(self.image, max(self.image.shape[0], self.image.shape[1])/1200)
         self.star_num = star_num # Param:取り出す星の数
         self.star_depth = star_depth # Param:近隣探索数の上限
         self.angle_depth = angle_depth # Param:角度誤差の許容範囲(±)
@@ -89,7 +92,7 @@ class Stardust:
                     cy = int(M['m01'] / M['m00'])
                     stars.append(np.array([cx, cy], dtype='int32'))
                 else:
-                    stars.append(np.array([cnt[0][0]], dtype='int32'))
+                    stars.append(np.array(cnt[0, 0], dtype='int32'))
             maxarea_index = np.argmax(areas)
             # TODO:画像の大半を消去してしまうようならthrあげるべき/削除方式をやめるべき？
             """
@@ -152,8 +155,8 @@ class Stardust:
         """(x, y)にi番目(0オリジン)に近いものを返す"""
         if i >= len(self.stars):
             print("Can't detect")
-            #sys.exit(1)
-            return np.array([None, None])
+            #return np.array([None, None])
+            return None
 
         if np.allclose(self.stars_dist["now"], p):
             return self.stars[self.stars_dist["index"][i]]
@@ -337,8 +340,7 @@ class Stardust:
             return self.__trac_constellation(write, tp, tp-bp, std_p, std_d, C)
 
 if __name__ == '__main__':
-    # TODO: mini だと動かない
-    IMAGE_FILE = "0038" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "g006" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
 
     start = time.time()    
