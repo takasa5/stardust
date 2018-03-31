@@ -1,8 +1,9 @@
 """stardust 2017/10/21"""
 import numpy as np
 import cv2
-import math, os, sys, time
+import time
 import Constellation
+from flask_socketio import emit
 
 SIZE = 666 #画像サイズ(横)
 
@@ -11,7 +12,9 @@ class Stardust:
                  star_num=120,
                  star_depth=5,
                  angle_depth=5,
-                 likelihood_thr=2
+                 likelihood_thr=2,
+                 socket=None,
+                 debug=False
                 ):
         if isinstance(image_name, np.ndarray): # 画像が直接渡された場合
             self.image = image_name
@@ -24,9 +27,12 @@ class Stardust:
         self.star_depth = star_depth # Param:近隣探索数の上限
         self.angle_depth = angle_depth # Param:角度誤差の許容範囲(±)
         self.likelihood_thr = likelihood_thr # Param:尤度の許容値
-        self.stars = self.__detect_stars()
         self.written_img = None
         self.stars_dist = {"now": np.array([-1, -1])}
+        self.socket = socket
+        self.debug = debug
+        self.stars = self.__detect_stars()
+        
         
     def get_image(self):
         return self.written_img
@@ -36,7 +42,6 @@ class Stardust:
         hight = img.shape[0]
         width = img.shape[1]
         small = cv2.resize(img, (round(width/scale), round(hight/scale)))
-        #self.image = small
         return small
 
     def darken(self, gamma):
@@ -51,7 +56,6 @@ class Stardust:
         """最適(？)スレッショルドを設定し、抽出した星座標のリストを返す"""
         flag = True
         thr = 250
-        gam, adapt = 1, 1
         
         # 円の半径と線の太さをちょうどよくする
         self.c_radius = int(max(self.image.shape[0], self.image.shape[1])/250)
@@ -64,8 +68,10 @@ class Stardust:
         while flag:
             stars, areas = [], []
             ret, new = cv2.threshold(img_gray, thr, 255, cv2.THRESH_BINARY)
-            cv2.imshow("gray", self.scale_down(new, max(new.shape[0], new.shape[1])/666))
-            cv2.waitKey(1)
+            # DEBUG
+            if self.debug:
+                cv2.imshow("gray", self.scale_down(new, max(new.shape[0], new.shape[1])/666))
+                cv2.waitKey(1)
             #輪郭検出
             det_img, contours, hierarchy = cv2.findContours(new, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
             """
@@ -118,14 +124,16 @@ class Stardust:
                 del_img = cv2.rectangle(del_img, (x, y), (x+w, y+h), (255, 0, 0), -1)
                 img_gray = cv2.cvtColor(del_img, cv2.COLOR_RGB2GRAY)
                 # DEBUG
-                cv2.imshow("deleted", self.scale_down(del_img, max(del_img.shape[0], del_img.shape[1])/666))
-                cv2.waitKey(1)
+                if self.debug:
+                    cv2.imshow("deleted", self.scale_down(del_img, max(del_img.shape[0], del_img.shape[1])/666))
+                    cv2.waitKey(1)
 
                 continue
             else:
                 # DEBUG
-                cv2.imshow("deleted", self.scale_down(del_img, max(del_img.shape[0], del_img.shape[1])/666))
-                cv2.waitKey(1)
+                if self.debug:
+                    cv2.imshow("deleted", self.scale_down(del_img, max(del_img.shape[0], del_img.shape[1])/666))
+                    cv2.waitKey(1)
             #ここまで
             
             flag = False
@@ -136,16 +144,16 @@ class Stardust:
 
         print("threashold:",thr)
         # DEBUG
-        tmp = self.image.copy()
-        for star in astars:
-            cv2.circle(tmp, (star[0],star[1]), 2, (0,0,255), -1, cv2.LINE_AA)
-        # DEBUG
-        cv2.imshow("finalcnt", self.scale_down(tmp, max(tmp.shape[0], tmp.shape[1])/SIZE))
-        cv2.waitKey(1)
+        if self.debug:
+            tmp = self.image.copy()
+            for star in astars:
+                cv2.circle(tmp, (star[0],star[1]), 2, (0,0,255), -1, cv2.LINE_AA)
+            cv2.imshow("finalcnt", self.scale_down(tmp, max(tmp.shape[0], tmp.shape[1])/SIZE))
+            cv2.waitKey(1)
         return astars
 
     def on_mouse(self, event, x, y, flag, param):
-        """マウスクリック時"""
+        """マウスクリック時(dup)"""
         #左クリックで最近傍の星出力
         if event == cv2.EVENT_LBUTTONDOWN:
             print("mouse:", x, y, sep=' ', end='\n')
@@ -174,9 +182,13 @@ class Stardust:
 
         stella_count = 0
         stella_data, like_list = [], []
+        sockcnt = 0
         for star in self.stars:
+            if self.socket is not None:
+                emit('searching', {"data": sockcnt})
+                sockcnt += 1
+                self.socket.sleep(0)
             self.star_count = 1
-            #std = np.array([star[0][0], star[0][1]])
             std = star
             i = 1
             while True:
@@ -210,6 +222,10 @@ class Stardust:
                                    cv2.LINE_AA
                                   )
                         self.__trac_constellation(True, p1, p1-std, std, d1, C)
+                        if self.socket is not None:
+                            emit('searching', {"data": self.star_num-1})
+                            self.socket.sleep(0)
+                        return
                         return
                     # 「一定の基準は越えるが、それらしいもの」は保存しておく
                     elif l_c < self.likelihood_thr*2 or self.star_count > C["N"]:
@@ -282,7 +298,6 @@ class Stardust:
                 # 角度が許容範囲であれば、後に使う値を取り出す
                 if ((theta > ang-self.angle_depth and theta < ang+self.angle_depth) 
                     and (d_s > rd*0.9 and d_s < rd*1.1)): 
-                    # TODO:append地獄、ここを改善することでスピードアップできそう
                     # 角度誤差が最小のものを記録しておく
                     tmp_diff = abs(theta - ang)
                     if tmp_diff < angle_diff:
@@ -316,7 +331,8 @@ class Stardust:
                                 + len_diff
                                 ) / (self.star_count/C["N"])
             if write:
-                print("ANGS:", angle_abs)
+                if self.debug:
+                    print("ANGS:", angle_abs)
                 #print("writed:", tp)
                 sp, ep = self.__line_adjust(bp, tp)
                 cv2.line(img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
@@ -340,11 +356,11 @@ class Stardust:
             return self.__trac_constellation(write, tp, tp-bp, std_p, std_d, C)
 
 if __name__ == '__main__':
-    IMAGE_FILE = "g006" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "mini" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
 
     start = time.time()    
-    sd = Stardust(f)
+    sd = Stardust(f, debug=True)
     cs = Constellation.Sagittarius()
     sd.draw_line(cs.get())
     end = time.time()
