@@ -3,8 +3,11 @@ import numpy as np
 import cv2
 import time
 import Constellation
-from flask_socketio import emit
-
+IMPORT_SOCKET = True
+try:
+    from flask_socketio import emit
+except ImportError:
+    IMPORT_SOCKET = False
 SIZE = 666 #画像サイズ(横)
 
 class Stardust:
@@ -16,6 +19,7 @@ class Stardust:
                  socket=None,
                  debug=False
                 ):
+        global IMPORT_SOCKET
         if isinstance(image_name, np.ndarray): # 画像が直接渡された場合
             self.image = image_name
         else:
@@ -29,7 +33,10 @@ class Stardust:
         self.likelihood_thr = likelihood_thr # Param:尤度の許容値
         self.written_img = None
         self.stars_dist = {"now": np.array([-1, -1])}
-        self.socket = socket
+        if IMPORT_SOCKET:
+            self.socket = socket
+        else:
+            self.socket = None
         self.debug = debug
         self.stars = self.__detect_stars()
         
