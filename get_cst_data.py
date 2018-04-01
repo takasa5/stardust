@@ -19,7 +19,7 @@ if __name__ == "__main__":
     
     x_list, y_list = [], []
     ZOOM = 1
-    STD, STDP = 1, None
+    STD, STDP = 2.46, None
     b_bec = None
     written_list = []
     ANGS, D, STD_D = [], [], []

@@ -14,8 +14,7 @@ class Stardust:
     def __init__(self, image_name,
                  star_num=120,
                  star_depth=5,
-                 angle_depth=5,
-                 likelihood_thr=2,
+                 dist_max=50,
                  socket=None,
                  debug=False
                 ):
@@ -29,8 +28,8 @@ class Stardust:
             self.image = self.scale_down(self.image, max(self.image.shape[0], self.image.shape[1])/1200)
         self.star_num = star_num # Param:取り出す星の数
         self.star_depth = star_depth # Param:近隣探索数の上限
-        self.angle_depth = angle_depth # Param:角度誤差の許容範囲(±)
-        self.likelihood_thr = likelihood_thr # Param:尤度の許容値
+        self.dist_max = dist_max # Param:許容する予測誤差の上限
+        self.likelihood = 0
         self.written_img = None
         self.stars_dist = {"now": np.array([-1, -1])}
         if IMPORT_SOCKET:
@@ -164,7 +163,7 @@ class Stardust:
         #左クリックで最近傍の星出力
         if event == cv2.EVENT_LBUTTONDOWN:
             print("mouse:", x, y, sep=' ', end='\n')
-            # print(self.search_near_star(x, y, 0))
+            print(self.search_near_star((x, y), 0))
 
     def search_near_star(self, p, i):
         """(x, y)にi番目(0オリジン)に近いものを返す"""
@@ -185,78 +184,113 @@ class Stardust:
     def draw_line(self, constellation):
         self.written_img = self.image.copy()
         self.constellation = constellation
-        C = constellation
 
-        stella_count = 0
-        stella_data, like_list = [], []
+        min_like = 100
+        best_point = None
         sockcnt = 0
         for star in self.stars:
             if self.socket is not None:
                 emit('searching', {"data": sockcnt})
                 sockcnt += 1
                 self.socket.sleep(0)
-            self.star_count = 1
-            std = star
+            self.std_star = star
             i = 1
             while True:
                 #2番目の星候補
-                p1 = self.search_near_star(std, i)
-                d1 = np.linalg.norm(p1-std)
-                if i > self.star_depth:
-                    break
-                #2番目の星から先で星座が書けるかどうかをチェック
-                point, bector = p1, p1-std
-                #print(p1)
-                self.likelihood, self.star_count = 0, 0
-                point, bector = self.__trac_constellation(False, point, bector, std, d1, C)
-                if self.star_count > 0:
-                    l_c = self.likelihood/self.star_count
-                    #print("L:",self.likelihood,"C:",self.star_count,"L/C:",l_c)
-                C["itr"] = 0
-                #第一返値で見つかってるかチェック
-                if point is None: #見つかってなければ次の星へ
-                    i += 1
-                else: # 見つかったら
-                    if l_c < self.likelihood_thr: # 一定以下の尤度なら即時描く
-                        print(l_c)
-                        sp, ep = self.__line_adjust(std, p1)
-                        cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
-                        cv2.circle(self.written_img,
-                                   (std[0],std[1]),
+                p1 = self.search_near_star(star, i)
+                self.likelihood, self.star_count = 0, 1
+                ret = self.__search_constellation(0, p1, p1 - self.std_star, constellation)
+                if ret == constellation["MAX"] and self.likelihood / self.star_count < 5: # 全部見つかったら
+                    # 1つめと2つめについて描く
+                    print(self.star_count, self.likelihood / self.star_count)
+                    p_list = [star, p1]
+                    sp, ep = self.__line_adjust(star, p1)
+                    cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
+                    for p in p_list:
+                        cv2.circle(self.written_img, 
+                                   (p[0], p[1]),
                                    self.c_radius,
-                                   (255,255,255),
+                                   (255, 255, 255),
                                    self.l_weight,
-                                   cv2.LINE_AA
-                                  )
-                        self.__trac_constellation(True, p1, p1-std, std, d1, C)
-                        if self.socket is not None:
-                            emit('searching', {"data": self.star_num-1})
-                            self.socket.sleep(0)
-                        return
-                        return
-                    # 「一定の基準は越えるが、それらしいもの」は保存しておく
-                    elif l_c < self.likelihood_thr*2 or self.star_count > C["N"]:
-                        print(l_c)
-                        stella_count += 1
-                        stella_data.append([p1, p1-std, std, d1])
-                        like_list.append(l_c)
-                    i += 1
-        print("visited all stars")
-        if len(like_list) > 0:
-            I = stella_data[np.argmin(like_list)]
-            print("likelihood:", like_list[np.argmin(like_list)])
-            sp, ep = self.__line_adjust(I[2], I[0])
-            cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
-            cv2.circle(self.written_img,
-                       (I[2][0],I[2][1]),
-                       self.c_radius,
-                       (255,255,255),
-                       self.l_weight,
-                       cv2.LINE_AA
-                      )
-            self.__trac_constellation(True, I[0], I[1], I[2], I[3], C)
-        else:
+                                   cv2.LINE_AA    
+                                  )          
+                    self.__search_constellation(0, p1, p1 - self.std_star, constellation, write=True)
+                    return
+                elif ret > constellation["N"]:
+                    print(self.star_count, self.likelihood / self.star_count)
+                    if min_like > self.likelihood / self.star_count:
+                        min_like = self.likelihood / self.star_count
+                        best_point = [star, p1]
+
+                i += 1
+                if self.star_depth < i:
+                    break
+        
+        if best_point is None:
             print("failed to detect")
+        else:
+            print(best_point, min_like)
+            sp, ep = self.__line_adjust(best_point[0], best_point[1])
+            cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
+            for p in best_point:
+                cv2.circle(self.written_img, 
+                           (p[0], p[1]),
+                           self.c_radius,
+                           (255, 255, 255),
+                           self.l_weight,
+                           cv2.LINE_AA    
+                          )          
+            self.__search_constellation(0,
+                                        best_point[1],
+                                        best_point[1] - best_point[0],
+                                        constellation,
+                                        write=True
+                                       )
+        
+    def __search_constellation(self, count, point, bector, constellation, write=False):
+        """(何番目の星か, 前の点, 前のベクトル, 星座(の一部))"""
+        dist, ang = constellation["D"][count], constellation["ANGS"][count]
+        if count == 0: # TODO:応急処置 ちゃんと後始末ができるようにしたい
+            constellation["BP"].clear()
+        predict = point + self.__rotate_bector(bector, ang) * dist
+        near_predict = self.search_near_star(predict, 0)
+        predict_diff = np.linalg.norm(near_predict - predict)
+        if self.star_count <= constellation["N"]:
+            self.likelihood += predict_diff
+        if count in constellation["JCT"]: # 現在の点が分岐点なら
+            constellation["BP"].append(near_predict)
+
+        if (predict_diff < self.dist_max
+            and not np.allclose(near_predict, point)
+            and not np.allclose(near_predict, self.std_star)
+           ): # もし予想地点近く(近くとは)に星があれば
+            self.star_count += 1
+            if write:
+                sp, ep = self.__line_adjust(point, near_predict)
+                cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
+                cv2.circle(self.written_img, 
+                           (near_predict[0], near_predict[1]),
+                           self.c_radius,
+                           (255, 255, 255),
+                           self.l_weight,
+                           cv2.LINE_AA    
+                          )
+
+            if count+1 == len(constellation["D"]): # 端点ならば
+                if len(constellation["BP"]) > 0: # 分岐点が存在すれば
+                    for (branch, rest) in zip(constellation["BP"], constellation["REST"]):
+                        self.__search_constellation(0, branch, near_predict - point, rest, write=write)
+
+                return self.star_count
+            return self.__search_constellation(count+1,
+                                               near_predict,
+                                               near_predict - point,
+                                               constellation,
+                                               write=write
+                                              )
+        else: # 近くに星がなければ
+            constellation["BP"].clear()
+            return self.star_count
 
     def __line_adjust(self, start, end):
         """線分を円周の部分までで止めるような始点、終点を返す"""
@@ -270,100 +304,20 @@ class Stardust:
 
         return ((int(restart[0]), int(restart[1])), (int(reend[0]), int(reend[1])))
 
-    def __trac_constellation(self, write, bp, bec, std_p, std_d, cst):
-        """(描画判断、前の座標、前ベクトル、基準点、基準距離, 星座の一部)"""
-        C = cst
-        img = self.written_img
-        dist, ang, rd = C["D"][C["itr"]], C["ANGS"][C["itr"]], C["STD_D"][C["itr"]]
-
-        i, p, d = 0, 0, 0
-        angle_diff = 400 # 適当な大きい値
-        # 近傍の星との距離がtarget distance(dist)の9割を越えるまで辿る
-        while d/std_d < dist * 0.9:
-            i += 1
-            p = self.search_near_star(bp, i)
-            if p is None:
-                break
-            else:
-                d = np.linalg.norm(bp - p)
-                
-        # 9割を越えたら、1.1割を越えるまで辿る
-        while d/std_d < dist * 1.1:
-            p = self.search_near_star(bp, i)
-            if p is None:
-                break
-            d = np.linalg.norm(bp - p)
-            i += 1
-            dot = np.dot(bec, p-bp)
-            cos = dot / (d * np.linalg.norm(bec))
-            if cos > 1 or cos < -1:
-                continue
-            else:
-                rad = np.arccos(cos)
-                theta = np.rad2deg(rad)
-                d_s = np.linalg.norm(p - std_p)/std_d
-                # 角度が許容範囲であれば、後に使う値を取り出す
-                if ((theta > ang-self.angle_depth and theta < ang+self.angle_depth) 
-                    and (d_s > rd*0.9 and d_s < rd*1.1)): 
-                    # 角度誤差が最小のものを記録しておく
-                    tmp_diff = abs(theta - ang)
-                    if tmp_diff < angle_diff:
-                        angle_abs = theta
-                        angle_diff = tmp_diff
-                        len_diff = abs(d_s - rd)
-                        best_point = p
-
-        if angle_diff == 400: # 一個も次の星らしき星が見つからなかった場合
-            #print("itr:", C["itr"], "angles is empty", ang)
-            C["itr"] = 0
-            C["BP"].clear()
-            if write: # write=Trueのときにここに入るのは最後のみ(多分)なので円を描いておわる
-                # TODO:理想値を計算し線のみ描画
-                cv2.circle(img, (bp[0], bp[1]), self.c_radius, (255,255,255), self.l_weight, cv2.LINE_AA)
-            # TODO:要検証 失敗時にも分岐を書く
-            """
-            if len(C["BP"]) > 0:
-                for (branch, rest) in zip(C["BP"], C["REST"]):
-                    self.__trac_constellation(write, branch, tp-bp, std_p, std_d, rest)    
-                C["itr"] = 0
-            """
-            return (None, None)
-        else: #可能性のある星を検出できていた場合
-            tp = np.array(best_point)
-            self.star_count += 1
-            # TODO: 尤度計算式は熟考すること
-            #if self.star_count <= 4:
-            self.likelihood += (abs(d/std_d - dist)
-                                + angle_diff
-                                + len_diff
-                                ) / (self.star_count/C["N"])
-            if write:
-                if self.debug:
-                    print("ANGS:", angle_abs)
-                #print("writed:", tp)
-                sp, ep = self.__line_adjust(bp, tp)
-                cv2.line(img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
-                cv2.circle(img, (bp[0], bp[1]), self.c_radius, (255,255,255), self.l_weight, cv2.LINE_AA)
-
-            if C["itr"] in C["JCT"]:
-                C["BP"].append(tp)
-
-            C["itr"] += 1
-            if C["itr"] == len(C["D"]):
-                cv2.circle(img, (tp[0], tp[1]), self.c_radius, (255,255,255), self.l_weight, cv2.LINE_AA)
-                #検出部終了時描画モードかつ分岐点が存在したら続きを描画
-                if len(C["BP"]) > 0:
-                    for (branch, rest) in zip(C["BP"], C["REST"]):
-                        #print("nowonBP:", branch)
-                        self.__trac_constellation(write, branch, tp-bp, std_p, std_d, rest)    
-                C["itr"] = 0
-                #print("end checked")
-                return (2**16, 2**16)
-
-            return self.__trac_constellation(write, tp, tp-bp, std_p, std_d, C)
-
+    def __rotate_bector(self, bector, deg):
+        """bector を deg 度だけ回転する"""
+        rad = np.deg2rad(deg)
+        cos = np.cos(rad)
+        sin = np.sin(rad)
+        R = np.matrix((
+            (cos, -sin),
+            (sin, cos)
+        ))
+        return np.dot(R, bector)
+ 
 if __name__ == '__main__':
-    IMAGE_FILE = "mini" #スピード:test < 1618 <= 1614 << 1916
+    # TODO:g003 g004 にて問題 案：std_distが短いものは外したい
+    IMAGE_FILE = "1916" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
 
     start = time.time()    

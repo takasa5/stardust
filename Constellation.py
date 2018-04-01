@@ -1,41 +1,29 @@
 
-#itr:どこの値を参照すべきかのイテレータ、書き込んだらインクリメント
-#ANGS:前ベクトルからの角度 STD_D:基準点からの距離 D:前の点との距離
+#ANGS:前ベクトルからの角度 D:前のベクトルとの長さの比
 #JCT:分岐点 BP:戻る点の情報、実行時に追加される REST:残りの部分、JCTと対応
+#N:主に計算や判定に用いる(いるのか？)
 
 class Sagittarius:
     def __init__(self):
-        self.SGT5 = {"itr":0,
-                     "ANGS":[48.5], "STD_D":[5.14], "D":[1.41], "STD_A":[131],
+        self.SGT5 = {"ANGS":[-48.5], "D":[1.237],
                      "JCT":[], "BP":[], "REST":[], "N":4
                     }
-        self.SGT4 = {"itr":0,
-                     "ANGS":[123.1, 27.85, 37.55],
-                     "STD_D":[3.76, 3.89, 4.874],
-                     "D":[1.93, 1.907, 1.139],
-                     "STD_A":[170.8, 143, 179],
+        self.SGT4 = {"ANGS":[+123.1, +27.85, -37.55],
+                     "D":[0.8143, 0.9881, 0.59727],
                      "JCT":[0], "BP":[], "REST":[self.SGT5], "N":4
                     }
-        self.SGT3 = {"itr":0,
-                     "ANGS":[128, 15.17],
-                     "STD_D":[3.76, 4.9],
-                     "D":[0.59, 1.22],
-                     "STD_A":[33.5, 18.3],
+        self.SGT3 = {"ANGS":[-128, +15.17],
+                     "D":[0.7564, 2.0678],
                      "JCT":[], "BP":[], "REST":[], "N":4
                     }
-        self.SGT2 = {"itr":0,
-                     "ANGS":[65.5, 96.3],#64.5
-                     "STD_D":[3.49, 3.89],
-                     "D":[2.13, 0.78],
-                     "STD_A":[0.26, 94], #94やばいかも
+        self.SGT2 = {"ANGS":[-65.5, +96.3],#64.5
+                     "D":[0.8987, 0.3662],
                      "JCT":[0], "BP":[], "REST":[self.SGT3], "N":4
                     }
-        self.SGT = {"itr":0,
-                    "ANGS":[85, 47, 37, 29],
-                    "STD_D":[1.66, 1.97, 3.69, 5.88],
-                    "D":[1.25, 0.905, 1.75, 2.37],
-                    "STD_A":[85, 133, 96, 66],
-                    "JCT":[0, 2], "BP":[], "REST":[self.SGT2, self.SGT4], "N":4
+        self.SGT = {"ANGS":[+85, +47, -37, -29],
+                    "D":[1.25, 0.724, 1.934, 1.354],
+                    "JCT":[0, 2], "BP":[], "REST":[self.SGT2, self.SGT4], "N":4,
+                    "MAX": 13
                    }
                 
     
@@ -44,6 +32,22 @@ class Sagittarius:
 
     def get_name(self):
         return "SGT"
+"""
+class Scorpius:
+    def __init__(self):
+        self.SCO = {"itr":0,
+                    "ANGS":[],
+                    "STD_D":[],
+                    "D":[],
+                    "JCT":[], "BP":[], "REST":[self.SGT2, self.SGT4], "N":0
+                   }
+                   # 端点とその次をJCTにできない問題
+
+    def get(self):
+        return self.SCO
+
+    def get_name(self):
+        return "SCO"
 
 class Perseus:
     def __init__(self):
@@ -70,3 +74,4 @@ class Perseus:
 
     def get_name(self):
         return "PRS"
+"""

@@ -1,8 +1,8 @@
 import numpy as np
 import math
 
-STD = np.array([157, 275])
-SBEC = np.array([168, 300]) - STD
+STD = np.array([1084, 156])
+SBEC = np.array([1102, 230]) - STD
 def stella_calc(std, bb, b, n):
     bbec = b - bb #前のベクトル
     nbec = n - b #今のベクトル
@@ -22,7 +22,7 @@ def stella_calc(std, bb, b, n):
     print("STD_A:", ang2)
 
 if __name__ == '__main__':
-    a = np.array([353, 350])
-    b = np.array([228, 143])
-    c = np.array([260, 203])
+    a = np.array([1084, 156])
+    b = np.array([1102, 230])
+    c = np.array([1093, 318])
     stella_calc(STD, STD, b, c)
