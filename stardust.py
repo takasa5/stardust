@@ -15,6 +15,7 @@ class Stardust:
                  star_num=120,
                  star_depth=5,
                  dist_max=50,
+                 angle_max=5,
                  socket=None,
                  debug=False
                 ):
@@ -28,7 +29,8 @@ class Stardust:
             self.image = self.scale_down(self.image, max(self.image.shape[0], self.image.shape[1])/1200)
         self.star_num = star_num # Param:取り出す星の数
         self.star_depth = star_depth # Param:近隣探索数の上限
-        self.dist_max = dist_max # Param:許容する予測誤差の上限
+        self.dist_max = dist_max # Param:許容する距離誤差の上限
+        self.angle_max = angle_max # Param:許容する角度誤差の上限
         self.likelihood = 0
         self.written_img = None
         self.stars_dist = {"now": np.array([-1, -1])}
@@ -244,10 +246,11 @@ class Stardust:
                                         best_point[1],
                                         best_point[1] - best_point[0],
                                         constellation,
-                                        write=True
+                                        write=True,
+                                        predict_write=True
                                        )
         
-    def __search_constellation(self, count, point, bector, constellation, write=False):
+    def __search_constellation(self, count, point, bector, constellation, write=False, predict_write=False):
         """(何番目の星か, 前の点, 前のベクトル, 星座(の一部))"""
         dist, ang = constellation["D"][count], constellation["ANGS"][count]
         if count == 0: # TODO:応急処置 ちゃんと後始末ができるようにしたい
@@ -257,13 +260,12 @@ class Stardust:
         predict_diff = np.linalg.norm(near_predict - predict)
         if self.star_count <= constellation["N"]:
             self.likelihood += predict_diff
-        if count in constellation["JCT"]: # 現在の点が分岐点なら
-            constellation["BP"].append(near_predict)
-
-        if (predict_diff < self.dist_max
-            and not np.allclose(near_predict, point)
-            and not np.allclose(near_predict, self.std_star)
-           ): # もし予想地点近く(近くとは)に星があれば
+        
+        theta = self.__calc_angle(bector, near_predict - point)
+        # もし予想地点近く(近くとは)に星があれば
+        if (predict_diff < self.dist_max and abs(abs(ang) - theta) < self.angle_max):
+            if count in constellation["JCT"]: # 現在の点が分岐点なら
+                constellation["BP"].append(near_predict)
             self.star_count += 1
             if write:
                 sp, ep = self.__line_adjust(point, near_predict)
@@ -279,14 +281,53 @@ class Stardust:
             if count+1 == len(constellation["D"]): # 端点ならば
                 if len(constellation["BP"]) > 0: # 分岐点が存在すれば
                     for (branch, rest) in zip(constellation["BP"], constellation["REST"]):
-                        self.__search_constellation(0, branch, near_predict - point, rest, write=write)
+                        self.__search_constellation(0,
+                                                    branch,
+                                                    near_predict - point,
+                                                    rest,
+                                                    write=write,
+                                                    predict_write=predict_write
+                                                   )
 
                 return self.star_count
             return self.__search_constellation(count+1,
                                                near_predict,
                                                near_predict - point,
                                                constellation,
-                                               write=write
+                                               write=write,
+                                               predict_write=predict_write
+                                              )
+        elif (predict_write
+              and write
+              and (predict[0, 0] > 0 and predict[0, 0] < self.image.shape[1])
+              and (predict[0, 1] > 0 and predict[0, 1] < self.image.shape[0])
+             ):
+            predict[0, 0] = int(predict[0, 0])
+            predict[0, 1] = int(predict[0, 1])
+            predict = np.array(predict.tolist())[0]
+            if count in constellation["JCT"]: # 現在の点が分岐点なら
+                constellation["BP"].append(predict)
+            print(predict)
+            sp, ep = self.__line_adjust(point, predict)
+            cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
+            if count+1 == len(constellation["D"]): # 端点ならば
+                if len(constellation["BP"]) > 0: # 分岐点が存在すれば
+                    for (branch, rest) in zip(constellation["BP"], constellation["REST"]):
+                        self.__search_constellation(0,
+                                                    branch,
+                                                    predict - point,
+                                                    rest,
+                                                    write=True,
+                                                    predict_write=True
+                                                   )
+
+                return self.star_count
+            return self.__search_constellation(count+1,
+                                               predict,
+                                               predict - point,
+                                               constellation,
+                                               write=True,
+                                               predict_write=True
                                               )
         else: # 近くに星がなければ
             constellation["BP"].clear()
@@ -301,7 +342,6 @@ class Stardust:
         b = start - end
         b = b / np.linalg.norm(b)
         reend = end + b * self.c_radius
-
         return ((int(restart[0]), int(restart[1])), (int(reend[0]), int(reend[1])))
 
     def __rotate_bector(self, bector, deg):
@@ -314,10 +354,16 @@ class Stardust:
             (sin, cos)
         ))
         return np.dot(R, bector)
+    
+    def __calc_angle(self, bec_a, bec_b):
+        """2つのベクトルのなす角を求める"""
+        dot = np.dot(bec_a, bec_b)
+        cos = dot / (np.linalg.norm(bec_a) * np.linalg.norm(bec_b))
+        rad = np.arccos(cos)
+        return np.rad2deg(rad)
  
 if __name__ == '__main__':
-    # TODO:g003 g004 にて問題 案：std_distが短いものは外したい
-    IMAGE_FILE = "1916" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "test" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
 
     start = time.time()    
@@ -330,6 +376,6 @@ if __name__ == '__main__':
     ret = sd.get_image()
     cv2.namedWindow("return", cv2.WINDOW_NORMAL)
     cv2.imshow("return", ret)
-    #cv2.imwrite(cs.get_name()+"_"+IMAGE_FILE+".JPG", ret)
     cv2.setMouseCallback("return", sd.on_mouse)
+    #cv2.imwrite(cs.get_name()+"_"+IMAGE_FILE+".JPG", ret)
     cv2.waitKey()
