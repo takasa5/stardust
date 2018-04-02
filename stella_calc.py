@@ -21,8 +21,20 @@ def stella_calc(std, bb, b, n):
     print("D:", d / ds)
     print("STD_A:", ang2)
 
+def new_stella_calc(bbec, nbec):
+    bd = np.linalg.norm(bbec)
+    nd = np.linalg.norm(nbec)
+    print("D:", nd / bd)
+    cos = np.dot(bbec, nbec) / (bd * nd)
+    rad = np.arccos(cos)
+    deg = np.rad2deg(rad)
+    if np.cross(bbec, nbec) < 0:
+        deg = -deg
+    print("ANGS:", deg)
+
 if __name__ == '__main__':
-    a = np.array([1084, 156])
-    b = np.array([1102, 230])
+    a = np.array([1102, 230])
+    b = np.array([1084, 156])
     c = np.array([1093, 318])
-    stella_calc(STD, STD, b, c)
+    d = np.array([778, 564])
+    new_stella_calc(b-a, c-a)

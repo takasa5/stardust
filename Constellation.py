@@ -1,8 +1,8 @@
 
 #ANGS:前ベクトルからの角度 D:前のベクトルとの長さの比
 #JCT:分岐点 BP:戻る点の情報、実行時に追加される REST:残りの部分、JCTと対応
-#N:主に計算や判定に用いる(いるのか？)
-
+#N:主に計算や判定に用いる(いるのか？) MAX:星の総数-1(最初)
+#注意:基準線を長めにとると失敗しがち
 class Sagittarius:
     def __init__(self):
         self.SGT5 = {"ANGS":[-48.5], "D":[1.237],
@@ -32,23 +32,29 @@ class Sagittarius:
 
     def get_name(self):
         return "SGT"
-"""
+
 class Scorpius:
     def __init__(self):
-        self.SCO = {"itr":0,
-                    "ANGS":[],
-                    "STD_D":[],
-                    "D":[],
-                    "JCT":[], "BP":[], "REST":[self.SGT2, self.SGT4], "N":0
+        self.SCO3 = {"ANGS":[-160.489],
+                     "D":[1.1615],
+                     "JCT":[], "BP":[], "REST":[], "N":5
+                    }
+        self.SCO2 = {"ANGS":[-157.045, 70.910, 13.447, 50.3314, 75.201, 1.771],
+                     "D":[1.3837, 0.7800, 1.3409, 0.7404, 0.4268, 1.08],#最後データにばらつきあり
+                     "JCT":[], "BP":[], "REST":[], "N":5
+                    }
+        self.SCO = {"ANGS":[22.302, 13.825, 25.867, -5.133, -80.837],
+                    "D":[1.8050, 0.3505, 0.8718, 2.9250, 0.5277],
+                    "JCT":[-1, 3], "BP":[], "REST":[self.SCO2, self.SCO3], "N":5,
+                    "MAX":13
                    }
-                   # 端点とその次をJCTにできない問題
 
     def get(self):
         return self.SCO
 
     def get_name(self):
         return "SCO"
-
+"""
 class Perseus:
     def __init__(self):
         self.PRS3 = {"itr":0,

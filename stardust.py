@@ -218,7 +218,7 @@ class Stardust:
                                   )          
                     self.__search_constellation(0, p1, p1 - self.std_star, constellation, write=True)
                     return
-                elif ret > constellation["N"]:
+                elif ret >= constellation["N"]-1:
                     print(self.star_count, self.likelihood / self.star_count)
                     if min_like > self.likelihood / self.star_count:
                         min_like = self.likelihood / self.star_count
@@ -232,6 +232,7 @@ class Stardust:
             print("failed to detect")
         else:
             print(best_point, min_like)
+            self.std_star = best_point[0]
             sp, ep = self.__line_adjust(best_point[0], best_point[1])
             cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
             for p in best_point:
@@ -258,13 +259,15 @@ class Stardust:
         predict = point + self.__rotate_bector(bector, ang) * dist
         near_predict = self.search_near_star(predict, 0)
         predict_diff = np.linalg.norm(near_predict - predict)
-        if self.star_count <= constellation["N"]:
+        if self.star_count <= constellation["N"]: # TODO:ここいる？
             self.likelihood += predict_diff
         
         theta = self.__calc_angle(bector, near_predict - point)
         # もし予想地点近く(近くとは)に星があれば
         if (predict_diff < self.dist_max and abs(abs(ang) - theta) < self.angle_max):
-            if count in constellation["JCT"]: # 現在の点が分岐点なら
+            if count == 0 and (-1 in constellation["JCT"]): # 分岐点が基準点の時
+                constellation["BP"].append(self.std_star)
+            elif count in constellation["JCT"]: # 現在の点が分岐点なら
                 constellation["BP"].append(near_predict)
             self.star_count += 1
             if write:
@@ -301,16 +304,19 @@ class Stardust:
               and write
               and (predict[0, 0] > 0 and predict[0, 0] < self.image.shape[1])
               and (predict[0, 1] > 0 and predict[0, 1] < self.image.shape[0])
-             ):
+             ): # 予想描画機能オンのとき
+            # TODO:はみ出すときは画面ギリギリまで線をひく
             predict[0, 0] = int(predict[0, 0])
             predict[0, 1] = int(predict[0, 1])
             predict = np.array(predict.tolist())[0]
-            if count in constellation["JCT"]: # 現在の点が分岐点なら
+            if count == 0 and (-1 in constellation["JCT"]): # 分岐点が基準点の時
+                constellation["BP"].append(self.std_star)
+            elif count in constellation["JCT"]: # 現在の点が分岐点なら
                 constellation["BP"].append(predict)
             print(predict)
             sp, ep = self.__line_adjust(point, predict)
             cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
-            if count+1 == len(constellation["D"]): # 端点ならば
+            if count+1 == len(constellation["D"]): # 端点ならば TODO:端点いかなくても分岐点は書きたい→前の辺を参照する現状では厳しい
                 if len(constellation["BP"]) > 0: # 分岐点が存在すれば
                     for (branch, rest) in zip(constellation["BP"], constellation["REST"]):
                         self.__search_constellation(0,
@@ -363,12 +369,12 @@ class Stardust:
         return np.rad2deg(rad)
  
 if __name__ == '__main__':
-    IMAGE_FILE = "test" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "g003" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
 
     start = time.time()    
     sd = Stardust(f, debug=True)
-    cs = Constellation.Sagittarius()
+    cs = Constellation.Scorpius()
     sd.draw_line(cs.get())
     end = time.time()
     print("elapsed:", end - start)
