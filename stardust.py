@@ -13,7 +13,7 @@ SIZE = 666 #画像サイズ(横)
 class Stardust:
     def __init__(self, image_name,
                  star_num=120,
-                 star_depth=5,
+                 star_depth=7,
                  dist_max=50,
                  angle_max=5,
                  socket=None,
@@ -39,6 +39,7 @@ class Stardust:
         else:
             self.socket = None
         self.debug = debug
+        # 画像の4隅
         self.a = np.array([0, 0])
         self.b = np.array([self.image.shape[1] - 1, 0])
         self.c = np.array([self.image.shape[1] - 1, self.image.shape[0] - 1])
@@ -213,7 +214,7 @@ class Stardust:
                 if ret == constellation["MAX"] and self.likelihood / self.star_count < 5: # 全部見つかったら
                     # 1つめと2つめについて描く
                     if self.debug:
-                        print(self.star_count, self.likelihood / self.star_count)
+                        print(self.std_star, self.star_count, self.likelihood / self.star_count)
                     p_list = [star, p1]
                     sp, ep = self.__line_adjust(star, p1)
                     cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
@@ -227,9 +228,9 @@ class Stardust:
                                   )          
                     self.__search_constellation(0, p1, p1 - self.std_star, constellation, write=True)
                     return
-                elif ret >= constellation["N"]-1:
+                elif ret >= constellation["N"]:
                     if self.debug:
-                        print(self.star_count, self.likelihood / self.star_count)
+                        print(self.std_star, self.star_count, self.likelihood / self.star_count)
                     if min_like > self.likelihood / self.star_count:
                         min_like = self.likelihood / self.star_count
                         best_point = [star, p1]
@@ -318,10 +319,24 @@ class Stardust:
             if ((predict[0] < 0 or predict[0] >= self.image.shape[1])
                 or (predict[1] < 0 or predict[1] >= self.image.shape[0])
                ):
+                # TODO: はみ出した点が分岐点だった場合の処理
                 managed_predict = self.__manage_cross(point, predict)
                 print("managed:", managed_predict)
                 sp, ep = self.__line_adjust(point, managed_predict)
                 cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
+                if count+1 == len(constellation["D"]): # 端点ならば
+                    if len(constellation["BP"]) > 0: # 分岐点が存在すれば
+                        for (branch, rest) in zip(constellation["BP"], constellation["REST"]):
+                            self.__search_constellation(0,
+                                                        branch,
+                                                        predict - point,
+                                                        rest,
+                                                        write=True,
+                                                        predict_write=True
+                                                    )
+
+                    return self.star_count
+                
                 return self.__search_constellation(count+1,
                                                    predict,
                                                    predict - point,
@@ -445,12 +460,13 @@ class Stardust:
                 return np.array([0, start[1] - x])
 
 if __name__ == '__main__':
-    IMAGE_FILE = "dzlm" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "g004" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
 
     start = time.time()    
     sd = Stardust(f, debug=True)
-    #cs = Constellation.Scorpius()
+    #cs = Constellation.Sagittarius()
+    #sd.draw_line(cs.get())
     sd.draw_line([Constellation.Sagittarius().get(), Constellation.Scorpius().get()])
     end = time.time()
     print("elapsed:", end - start)
