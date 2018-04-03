@@ -1,12 +1,14 @@
 # stardust
 星座検出プログラム  
 
+## Example
+(Photo by Rikuo Uchiki)
 |input|output|
 |---|---|
-|<img src="./example_input.JPG" width=400px>|<img src="./example_output.JPG" width=400px>|
+|<img src="./example_input.JPG" width=400px>|<img src="./example_output.JPG" width=400px>| 
  
 
-## requirements
+## Requirements
 ```
 opencv-python==3.4.0
 numpy==1.14.0

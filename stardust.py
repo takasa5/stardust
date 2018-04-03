@@ -445,7 +445,7 @@ class Stardust:
                 return np.array([0, start[1] - x])
 
 if __name__ == '__main__':
-    IMAGE_FILE = "0038" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "dzlm" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
 
     start = time.time()    
