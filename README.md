@@ -21,7 +21,7 @@ $ cd stardust
 from stardust import Stardust
 import Constellation
 
-# 入力画像のパスで初期化
+# 入力画像のパス(or ndarray化した画像)で初期化
 sd = Stardust("./input.jpg")
 # 検出したい星座を指定
 cs = Constellation.Sagittarius() # いて座
@@ -35,5 +35,5 @@ ret = sd.get_image()
 ## TODO
 - 精度向上
 - 星座データを追加する
-    - 現状はいて座(Sagittarius)とペルセウス座(Perseus)のみ
+    - 現状はいて座(Sagittarius)とさそり座(Scorpius)のみ
     - データを紹介してくれる方、撮影した写真を提供してくれる方を募集しています
