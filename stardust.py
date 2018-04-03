@@ -39,6 +39,10 @@ class Stardust:
         else:
             self.socket = None
         self.debug = debug
+        self.a = np.array([0, 0])
+        self.b = np.array([self.image.shape[1] - 1, 0])
+        self.c = np.array([self.image.shape[1] - 1, self.image.shape[0] - 1])
+        self.d = np.array([0, self.image.shape[0] - 1])
         self.stars = self.__detect_stars()
         
         
@@ -300,20 +304,31 @@ class Stardust:
                                                write=write,
                                                predict_write=predict_write
                                               )
-        elif (predict_write
-              and write
-              and (predict[0, 0] > 0 and predict[0, 0] < self.image.shape[1])
-              and (predict[0, 1] > 0 and predict[0, 1] < self.image.shape[0])
-             ): # 予想描画機能オンのとき
-            # TODO:はみ出すときは画面ギリギリまで線をひく
+        elif (predict_write and write): # 予想描画機能オンのとき
             predict[0, 0] = int(predict[0, 0])
             predict[0, 1] = int(predict[0, 1])
             predict = np.array(predict.tolist())[0]
+            # 予測点がはみ出すとき
+            if ((predict[0] < 0 or predict[0] >= self.image.shape[1])
+                or (predict[1] < 0 or predict[1] >= self.image.shape[0])
+               ):
+                managed_predict = self.__manage_cross(point, predict)
+                print("managed:", managed_predict)
+                sp, ep = self.__line_adjust(point, managed_predict)
+                cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
+                return self.__search_constellation(count+1,
+                                                   predict,
+                                                   predict - point,
+                                                   constellation,
+                                                   write=True,
+                                                   predict_write=True
+                                                  )
+                
             if count == 0 and (-1 in constellation["JCT"]): # 分岐点が基準点の時
                 constellation["BP"].append(self.std_star)
             elif count in constellation["JCT"]: # 現在の点が分岐点なら
                 constellation["BP"].append(predict)
-            print(predict)
+            #print(predict)
             sp, ep = self.__line_adjust(point, predict)
             cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
             if count+1 == len(constellation["D"]): # 端点ならば TODO:端点いかなくても分岐点は書きたい→前の辺を参照する現状では厳しい
@@ -367,7 +382,63 @@ class Stardust:
         cos = dot / (np.linalg.norm(bec_a) * np.linalg.norm(bec_b))
         rad = np.arccos(cos)
         return np.rad2deg(rad)
- 
+
+    def __check_cross(self, p1, p2, p3, p4):
+        """ベクトル同士が交差していればTrue, else Falseを返す"""
+        print(p1, p2, p3, p4)
+        t1 = (p1[0] - p2[0]) * (p3[1] - p1[1]) + (p1[1] - p2[1]) * (p1[0] - p3[0])
+        t2 = (p1[0] - p2[0]) * (p4[1] - p1[1]) + (p1[1] - p2[1]) * (p1[0] - p4[0])
+        t3 = (p3[0] - p4[0]) * (p1[1] - p3[1]) + (p3[1] - p4[1]) * (p3[0] - p1[0])
+        t4 = (p3[0] - p4[0]) * (p2[1] - p3[1]) + (p3[1] - p4[1]) * (p3[0] - p2[0])
+        return t1 * t2 < 0 and t3 * t4 < 0
+
+    def __manage_cross(self, start, end):
+        """はみ出た点に対し、そこに続くような線を描くための枠上の座標を返す"""
+        if self.__check_cross(start, end, self.a, self.b):
+            print("0")
+            a = start[1]
+            deg = self.__calc_angle(end - start, self.b - self.a)
+            if deg > 90:
+                deg = 180 - deg
+                x = a // np.tan(np.deg2rad(deg))
+                return np.array([start[0] - x, 0])
+            else:
+                x = a // np.tan(np.deg2rad(deg))   
+                return np.array(start[0] + x, 0)
+        elif self.__check_cross(start, end, self.b, self.c):
+            print("1")
+            a = self.c[0] - start[0]
+            deg = self.__calc_angle(end - start, self.c - self.b)
+            if deg > 90:
+                deg = 180 - deg
+                x = a // np.tan(np.deg2rad(deg))
+                return np.array([self.b[0], start[1] - x])
+            else:
+                x = a // np.tan(np.deg2rad(deg))
+                return np.array([self.b[0], start[1] + x])
+        elif self.__check_cross(start, end, self.c, self.d):
+            print("2")
+            a = self.d[1] - start[1]
+            deg = self.__calc_angle(end - start, self.d - self.c)
+            if deg > 90:
+                deg = 180 - deg
+                x = a // np.tan(np.deg2rad(deg))
+                return np.array([start[0] - x, self.c[1]])
+            else:
+                x = a // np.tan(np.deg2rad(deg))
+                return np.array([start[0] + x, self.c[1]])
+        elif self.__check_cross(start, end, self.d, self.a):
+            print("3")
+            a = start[0]
+            deg = self.__calc_angle(end - start, self.a - self.d)
+            if deg > 90:
+                deg = 180 - deg
+                x = a // np.tan(np.deg2rad(deg))
+                return np.array([0, start[1] + x])
+            else:
+                x = a // np.tan(np.deg2rad(deg))
+                return np.array([0, start[1] - x])
+
 if __name__ == '__main__':
     IMAGE_FILE = "g003" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
