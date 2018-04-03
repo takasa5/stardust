@@ -32,7 +32,7 @@ class Stardust:
         self.dist_max = dist_max # Param:許容する距離誤差の上限
         self.angle_max = angle_max # Param:許容する角度誤差の上限
         self.likelihood = 0
-        self.written_img = None
+        self.written_img = self.image.copy()
         self.stars_dist = {"now": np.array([-1, -1])}
         if IMPORT_SOCKET:
             self.socket = socket
@@ -188,7 +188,11 @@ class Stardust:
             return self.stars[index[i]]
 
     def draw_line(self, constellation):
-        self.written_img = self.image.copy()
+        if isinstance(constellation, list):
+            for cst in constellation:
+                self.draw_line(cst)
+            return
+        
         self.constellation = constellation
 
         min_like = 100
@@ -208,7 +212,8 @@ class Stardust:
                 ret = self.__search_constellation(0, p1, p1 - self.std_star, constellation)
                 if ret == constellation["MAX"] and self.likelihood / self.star_count < 5: # 全部見つかったら
                     # 1つめと2つめについて描く
-                    print(self.star_count, self.likelihood / self.star_count)
+                    if self.debug:
+                        print(self.star_count, self.likelihood / self.star_count)
                     p_list = [star, p1]
                     sp, ep = self.__line_adjust(star, p1)
                     cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
@@ -223,7 +228,8 @@ class Stardust:
                     self.__search_constellation(0, p1, p1 - self.std_star, constellation, write=True)
                     return
                 elif ret >= constellation["N"]-1:
-                    print(self.star_count, self.likelihood / self.star_count)
+                    if self.debug:
+                        print(self.star_count, self.likelihood / self.star_count)
                     if min_like > self.likelihood / self.star_count:
                         min_like = self.likelihood / self.star_count
                         best_point = [star, p1]
@@ -254,7 +260,7 @@ class Stardust:
                                         write=True,
                                         predict_write=True
                                        )
-        
+    
     def __search_constellation(self, count, point, bector, constellation, write=False, predict_write=False):
         """(何番目の星か, 前の点, 前のベクトル, 星座(の一部))"""
         dist, ang = constellation["D"][count], constellation["ANGS"][count]
@@ -385,7 +391,6 @@ class Stardust:
 
     def __check_cross(self, p1, p2, p3, p4):
         """ベクトル同士が交差していればTrue, else Falseを返す"""
-        print(p1, p2, p3, p4)
         t1 = (p1[0] - p2[0]) * (p3[1] - p1[1]) + (p1[1] - p2[1]) * (p1[0] - p3[0])
         t2 = (p1[0] - p2[0]) * (p4[1] - p1[1]) + (p1[1] - p2[1]) * (p1[0] - p4[0])
         t3 = (p3[0] - p4[0]) * (p1[1] - p3[1]) + (p3[1] - p4[1]) * (p3[0] - p1[0])
@@ -440,13 +445,13 @@ class Stardust:
                 return np.array([0, start[1] - x])
 
 if __name__ == '__main__':
-    IMAGE_FILE = "g003" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "0038" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
 
     start = time.time()    
     sd = Stardust(f, debug=True)
-    cs = Constellation.Scorpius()
-    sd.draw_line(cs.get())
+    #cs = Constellation.Scorpius()
+    sd.draw_line([Constellation.Sagittarius().get(), Constellation.Scorpius().get()])
     end = time.time()
     print("elapsed:", end - start)
     
@@ -455,4 +460,5 @@ if __name__ == '__main__':
     cv2.imshow("return", ret)
     cv2.setMouseCallback("return", sd.on_mouse)
     #cv2.imwrite(cs.get_name()+"_"+IMAGE_FILE+".JPG", ret)
+    #cv2.imwrite("multi_"+IMAGE_FILE+".JPG", ret)
     cv2.waitKey()
