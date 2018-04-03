@@ -2,7 +2,8 @@
 星座検出プログラム  
 
 ## Example
-(Photo by Rikuo Uchiki)
+(Photo by Rikuo Uchiki)  
+
 |input|output|
 |---|---|
 |<img src="./example_input.JPG" width=400px>|<img src="./example_output.JPG" width=400px>| 
