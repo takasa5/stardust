@@ -227,6 +227,9 @@ class Stardust:
                                    cv2.LINE_AA    
                                   )          
                     self.__search_constellation(0, p1, p1 - self.std_star, constellation, write=True)
+                    if self.socket is not None:
+                        emit('searching', {"data": self.star_num-1})
+                        self.socket.sleep(0)
                     return
                 elif ret >= constellation["N"]:
                     if self.debug:
