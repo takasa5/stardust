@@ -8,3 +8,6 @@ source/
 .vscode/
 __pycache__/
 pylintrc
+*.csv
+get_cst_data.py
+stella_calc.py
