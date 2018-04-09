@@ -22,14 +22,14 @@ $ cd stardust
 ```
 ```python
 from stardust import Stardust
-import Constellation
+import Constellation as cs
 
 # 入力画像のパス(or ndarray化した画像)で初期化
 sd = Stardust("./input.jpg")
 # 検出したい星座を指定
-cs = Constellation.Sagittarius() # いて座
+cstl = cs.Sagittarius() # いて座
 # 星座線を引く(あれば)
-sd.draw_line(cs.get())
+sd.draw_line(cstl)
 # 画像を返す
 ret = sd.get_image()
 # cv2.imshow()なり cv2.imwrite()なりする
