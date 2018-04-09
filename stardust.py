@@ -30,6 +30,7 @@ class Stardust:
         if max(self.image.shape[0], self.image.shape[1]) < 1200:
             self.image = self.scale_down(self.image, max(self.image.shape[0], self.image.shape[1])/1200)
         self.text_size = 1.72e-7 * self.image.shape[0] * self.image.shape[1] + 1.34 # TODO:adjust!
+        self.text_weight = 3 if self.image.shape[0] > 2000 and self.image.shape[1] > 2000 else 1
         self.star_num = star_num # Param:取り出す星の数
         self.star_depth = star_depth # Param:近隣探索数の上限
         self.dist_max = dist_max # Param:許容する距離誤差の上限
@@ -193,12 +194,15 @@ class Stardust:
             self.stars_dist["index"] = index #メモ化
             return self.stars[index[i]]
 
-    def draw_line(self, constellation):
+    def draw_line(self, constellation, mode=cs.DEFAULT):
         if isinstance(constellation, list):
             for cst in constellation:
-                self.draw_line(cst)
+                self.draw_line(cst, mode=mode)
             return
-        
+        if mode == cs.DEFAULT:
+            line = constellation.line
+        elif mode == cs.IAU:
+            line = constellation.iau
         self.constellation = constellation
 
         min_like = 100
@@ -215,8 +219,8 @@ class Stardust:
                 #2番目の星候補
                 p1 = self.search_near_star(star, i)
                 self.likelihood, self.star_count = 0, 1
-                ret = self.__search_constellation(0, p1, p1 - self.std_star, constellation.line)
-                if ret == constellation.line["MAX"] and self.likelihood / self.star_count < 5: # 全部見つかったら
+                ret = self.__search_constellation(0, p1, p1 - self.std_star, line)
+                if ret == line["MAX"] and self.likelihood / self.star_count < 5: # 全部見つかったら
                     # 1つめと2つめについて描く
                     if self.debug:
                         print(self.std_star, self.star_count, self.likelihood / self.star_count)
@@ -231,20 +235,20 @@ class Stardust:
                                    self.l_weight,
                                    cv2.LINE_AA    
                                   )          
-                    self.__search_constellation(0, p1, p1 - self.std_star, constellation.line, write=True)
+                    self.__search_constellation(0, p1, p1 - self.std_star, line, write=True)
                     if self.write_text:
                         cv2.putText(self.written_img,
                                     constellation.en_name,
                                     (self.std_star[0] + 4 * self.c_radius, self.std_star[1] - 4 * self.c_radius),
                                     cv2.FONT_HERSHEY_SCRIPT_COMPLEX,
-                                    self.text_size, (255,255,255), 1, cv2.LINE_AA # 太さをマネージする(星座の大きさの計算が必要…？)
+                                    self.text_size, (255,255,255), self.text_weight, cv2.LINE_AA # 太さをマネージする(星座の大きさの計算が必要…？)
                                    )
                     if self.socket is not None:
                         emit('searching', {"data": self.star_num-1})
                         self.socket.sleep(0)
                     
                     return
-                elif ret >= constellation.line["N"]:
+                elif ret >= line["N"] and self.likelihood / self.star_count < 20:
                     if self.debug:
                         print(self.std_star, self.star_count, self.likelihood / self.star_count)
                     if min_like > self.likelihood / self.star_count:
@@ -273,7 +277,7 @@ class Stardust:
             self.__search_constellation(0,
                                         best_point[1],
                                         best_point[1] - best_point[0],
-                                        constellation.line,
+                                        line,
                                         write=True,
                                         predict_write=True
                                        )
@@ -283,7 +287,7 @@ class Stardust:
                             constellation.en_name,
                             (self.std_star[0] + 4 * self.c_radius, self.std_star[1] - 4 * self.c_radius),
                             cv2.FONT_HERSHEY_SCRIPT_COMPLEX,
-                            self.text_size, (255,255,255), 1, cv2.LINE_AA # 太さをマネージする(星座の大きさの計算が必要…？)
+                            self.text_size, (255,255,255), self.text_weight, cv2.LINE_AA # 太さをマネージする(星座の大きさの計算が必要…？)
                            )
 
     def __search_constellation(self, count, point, bector, constellation, write=False, predict_write=False):
@@ -300,8 +304,9 @@ class Stardust:
         theta = self.__calc_angle(bector, near_predict - point)
         # もし予想地点近く(近くとは)に星があれば
         if (predict_diff < self.dist_max and abs(abs(ang) - theta) < self.angle_max):
-            if count == 0 and (-1 in constellation["JCT"]): # 分岐点が基準点の時
-                constellation["BP"].append(self.std_star)
+            if count == 0 and (-2 in constellation["JCT"] or -1 in constellation["JCT"]): # 分岐点が基準点の時
+                for i in range(constellation["JCT"].count(-2)): # TODO: -1のもなんとかしよう
+                    constellation["BP"].append(self.std_star)
             elif count in constellation["JCT"]: # 現在の点が分岐点なら
                 constellation["BP"].append(near_predict)
             self.star_count += 1
@@ -346,8 +351,9 @@ class Stardust:
                 # TODO: はみ出した点が分岐点だった場合の処理
                 managed_predict = self.__manage_cross(point, predict)
                 print("managed:", managed_predict)
-                sp, ep = self.__line_adjust(point, managed_predict)
-                cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
+                if managed_predict is not None:
+                    sp, ep = self.__line_adjust(point, managed_predict)
+                    cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
                 if count+1 == len(constellation["D"]): # 端点ならば
                     if len(constellation["BP"]) > 0: # 分岐点が存在すれば
                         for (branch, rest) in zip(constellation["BP"], constellation["REST"]):
@@ -369,8 +375,9 @@ class Stardust:
                                                    predict_write=True
                                                   )
                 
-            if count == 0 and (-1 in constellation["JCT"]): # 分岐点が基準点の時
-                constellation["BP"].append(self.std_star)
+            if count == 0 and (-2 in constellation["JCT"]): # 分岐点が基準点の時
+                for i in range(constellation["JCT"].count(-2)):
+                    constellation["BP"].append(self.std_star)
             elif count in constellation["JCT"]: # 現在の点が分岐点なら
                 constellation["BP"].append(predict)
             #print(predict)
@@ -493,14 +500,13 @@ class Stardust:
                 return np.array([0, start[1] - x])
 
 if __name__ == '__main__':
-    IMAGE_FILE = "g004" #スピード:test < 1618 <= 1614 << 1916
+    IMAGE_FILE = "dzlm" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
-    f = "example_input.JPG"
     start = time.time()    
     sd = Stardust(f, write_text=True, debug=True)
     cst = cs.Sagittarius()
     #sd.draw_line(cst)
-    sd.draw_line([cs.sgt, cs.sco])
+    sd.draw_line([cs.sgr, cs.sco], mode=cs.IAU)
     end = time.time()
     print("elapsed:", end - start)
     ret = sd.get_image()

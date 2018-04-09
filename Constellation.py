@@ -1,35 +1,50 @@
-
+"""星座データベース : Original Constellation Database"""
 #ANGS:前ベクトルからの角度 D:前のベクトルとの長さの比
 #JCT:分岐点 BP:戻る点の情報、実行時に追加される REST:残りの部分、JCTと対応
 #N:主に計算や判定に用いる(いるのか？) MAX:星の総数-1(最初)
 #注意:基準線を長めにとると失敗しがち
+DEFAULT = 0
+IAU = 1
 class Sagittarius:
     def __init__(self):
-        self.SGT5 = {"ANGS":[-48.5], "D":[1.237],
+        self.SGR5 = {"ANGS":[-48.5], "D":[1.237],
                      "JCT":[], "BP":[], "REST":[], "N":4
                     }
-        self.SGT4 = {"ANGS":[+123.1, +27.85, -37.55],
+        self.SGR4 = {"ANGS":[+123.1, +27.85, -37.55],
                      "D":[0.8143, 0.9881, 0.59727],
-                     "JCT":[0], "BP":[], "REST":[self.SGT5], "N":4
+                     "JCT":[0], "BP":[], "REST":[self.SGR5], "N":4
                     }
-        self.SGT3 = {"ANGS":[-128, +15.17],
+        self.SGR3 = {"ANGS":[-128, +15.17],
                      "D":[0.7564, 2.0678],
                      "JCT":[], "BP":[], "REST":[], "N":4
                     }
-        self.SGT2 = {"ANGS":[-65.5, +96.3],#64.5
+        self.SGR2 = {"ANGS":[-65.5, +96.3],#64.5
                      "D":[0.8987, 0.3662],
-                     "JCT":[0], "BP":[], "REST":[self.SGT3], "N":4
+                     "JCT":[0], "BP":[], "REST":[self.SGR3], "N":4
                     }
-        self.SGT = {"ANGS":[+85, +47, -37, -29],
+        self.SGR = {"ANGS":[+85, +47, -37, -29],
                     "D":[1.25, 0.724, 1.934, 1.354],
-                    "JCT":[0, 2], "BP":[], "REST":[self.SGT2, self.SGT4], "N":4,
+                    "JCT":[0, 2], "BP":[], "REST":[self.SGR2, self.SGR4], "N":4,
                     "MAX": 13
                    }
-        self.line = self.SGT
+        self.iau5 = {"ANGS":[-58, +124, +142],
+                     "D":[0.731, 1.625, 0.832],
+                     "JCT":[], "BP":[], "N":4
+                    }
+        self.iau4 = {"ANGS":[-44], "D":[1.315], "JCT":[], "BP":[], "N":4}
+        self.iau3 = {"ANGS":[-111], "D":[1.02], "JCT":[], "BP":[], "N":4}
+        self.iau2 = {"ANGS":[-44], "D":[2.016], "JCT":[], "BP":[], "N":4}
+        self.iau = {"ANGS":[+85, +47, -37, +93],
+                    "D":[1.25, 0.724, 1.934, 1.093],
+                    "JCT":[-2, -2, 1, 3], "BP":[],
+                    "REST":[self.iau2, self.iau3, self.iau4, self.iau5],
+                    "N":4, "MAX": 11
+                   }
+        self.line = self.SGR
         self.ja_name = "いて座"
         self.en_name = "Sagittarius"
-        self.short_name = "SGT"
-sgt = Sagittarius()
+        self.short_name = "SGR"
+sgr = Sagittarius()
 
 class Scorpius:
     def __init__(self):
@@ -43,10 +58,11 @@ class Scorpius:
                     }
         self.SCO = {"ANGS":[22.302, 13.825, 25.867, -5.133, -80.837],
                     "D":[1.8050, 0.3505, 0.8718, 2.9250, 0.5277],
-                    "JCT":[-1, 3], "BP":[], "REST":[self.SCO2, self.SCO3], "N":5,
+                    "JCT":[-2, 3], "BP":[], "REST":[self.SCO2, self.SCO3], "N":5,
                     "MAX":13
                    }
         self.line = self.SCO
+        self.iau = self.SCO
         self.ja_name = "さそり座"
         self.en_name = "Scorpius"
         self.short_name = "SCO"
