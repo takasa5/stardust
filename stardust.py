@@ -2,7 +2,7 @@
 import numpy as np
 import cv2
 import time
-import Constellation
+import Constellation as cs
 IMPORT_SOCKET = True
 try:
     from flask_socketio import emit
@@ -17,6 +17,7 @@ class Stardust:
                  dist_max=50,
                  angle_max=5,
                  socket=None,
+                 predict_circle=False,
                  debug=False
                 ):
         global IMPORT_SOCKET
@@ -31,6 +32,7 @@ class Stardust:
         self.star_depth = star_depth # Param:近隣探索数の上限
         self.dist_max = dist_max # Param:許容する距離誤差の上限
         self.angle_max = angle_max # Param:許容する角度誤差の上限
+        self.predict_circle = predict_circle
         self.likelihood = 0
         self.written_img = self.image.copy()
         self.stars_dist = {"now": np.array([-1, -1])}
@@ -185,7 +187,7 @@ class Stardust:
             L = [np.linalg.norm(star-p) for star in self.stars]
             index = np.array(L)
             index = np.argsort(index)
-            self.stars_dist["index"] = index   #メモ化
+            self.stars_dist["index"] = index #メモ化
             return self.stars[index[i]]
 
     def draw_line(self, constellation):
@@ -210,8 +212,8 @@ class Stardust:
                 #2番目の星候補
                 p1 = self.search_near_star(star, i)
                 self.likelihood, self.star_count = 0, 1
-                ret = self.__search_constellation(0, p1, p1 - self.std_star, constellation)
-                if ret == constellation["MAX"] and self.likelihood / self.star_count < 5: # 全部見つかったら
+                ret = self.__search_constellation(0, p1, p1 - self.std_star, constellation.line)
+                if ret == constellation.line["MAX"] and self.likelihood / self.star_count < 5: # 全部見つかったら
                     # 1つめと2つめについて描く
                     if self.debug:
                         print(self.std_star, self.star_count, self.likelihood / self.star_count)
@@ -226,12 +228,12 @@ class Stardust:
                                    self.l_weight,
                                    cv2.LINE_AA    
                                   )          
-                    self.__search_constellation(0, p1, p1 - self.std_star, constellation, write=True)
+                    self.__search_constellation(0, p1, p1 - self.std_star, constellation.line, write=True)
                     if self.socket is not None:
                         emit('searching', {"data": self.star_num-1})
                         self.socket.sleep(0)
                     return
-                elif ret >= constellation["N"]:
+                elif ret >= constellation.line["N"]:
                     if self.debug:
                         print(self.std_star, self.star_count, self.likelihood / self.star_count)
                     if min_like > self.likelihood / self.star_count:
@@ -260,11 +262,20 @@ class Stardust:
             self.__search_constellation(0,
                                         best_point[1],
                                         best_point[1] - best_point[0],
-                                        constellation,
+                                        constellation.line,
                                         write=True,
                                         predict_write=True
                                        )
-    
+            print(self.std_star)
+            """
+            cv2.putText(self.written_img,
+                        constellation.en_name,
+                        (self.std_star[0] + 4 * self.c_radius, self.std_star[1] - 4 * self.c_radius),
+                        cv2.FONT_HERSHEY_SCRIPT_COMPLEX,
+                        2, (255,255,255), 1, cv2.LINE_AA # 太さをマネージする(星座の大きさの計算が必要…？)
+                       )
+            """
+
     def __search_constellation(self, count, point, bector, constellation, write=False, predict_write=False):
         """(何番目の星か, 前の点, 前のベクトル, 星座(の一部))"""
         dist, ang = constellation["D"][count], constellation["ANGS"][count]
@@ -355,6 +366,15 @@ class Stardust:
             #print(predict)
             sp, ep = self.__line_adjust(point, predict)
             cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
+            if self.predict_circle: # predict_circleによって予測時に円を描くか決める
+                print("predict", predict)
+                cv2.circle(self.written_img, 
+                           (int(predict[0]), int(predict[1])),
+                           self.c_radius,
+                           (255, 255, 255),
+                           self.l_weight,
+                           cv2.LINE_AA    
+                          )
             if count+1 == len(constellation["D"]): # 端点ならば TODO:端点いかなくても分岐点は書きたい→前の辺を参照する現状では厳しい
                 if len(constellation["BP"]) > 0: # 分岐点が存在すれば
                     for (branch, rest) in zip(constellation["BP"], constellation["REST"]):
@@ -398,11 +418,11 @@ class Stardust:
             (cos, -sin),
             (sin, cos)
         ))
-        return np.dot(R, bector)
+        return R @ bector
     
     def __calc_angle(self, bec_a, bec_b):
         """2つのベクトルのなす角を求める"""
-        dot = np.dot(bec_a, bec_b)
+        dot = bec_a @ bec_b
         cos = dot / (np.linalg.norm(bec_a) * np.linalg.norm(bec_b))
         rad = np.arccos(cos)
         return np.rad2deg(rad)
@@ -465,19 +485,18 @@ class Stardust:
 if __name__ == '__main__':
     IMAGE_FILE = "g004" #スピード:test < 1618 <= 1614 << 1916
     f = "source\\" + IMAGE_FILE + ".JPG"
-
+    f = "example_input.JPG"
     start = time.time()    
     sd = Stardust(f, debug=True)
-    #cs = Constellation.Sagittarius()
-    #sd.draw_line(cs.get())
-    sd.draw_line([Constellation.Sagittarius().get(), Constellation.Scorpius().get()])
+    cst = cs.Sagittarius()
+    #sd.draw_line(cst)
+    sd.draw_line([cs.sgt, cs.sco])
     end = time.time()
     print("elapsed:", end - start)
-    
     ret = sd.get_image()
     cv2.namedWindow("return", cv2.WINDOW_NORMAL)
     cv2.imshow("return", ret)
     cv2.setMouseCallback("return", sd.on_mouse)
-    #cv2.imwrite(cs.get_name()+"_"+IMAGE_FILE+".JPG", ret)
+    #cv2.imwrite(cst.name+"_"+IMAGE_FILE+".JPG", ret)
     #cv2.imwrite("multi_"+IMAGE_FILE+".JPG", ret)
     cv2.waitKey()

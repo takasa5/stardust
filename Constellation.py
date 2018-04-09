@@ -25,13 +25,11 @@ class Sagittarius:
                     "JCT":[0, 2], "BP":[], "REST":[self.SGT2, self.SGT4], "N":4,
                     "MAX": 13
                    }
-                
-    
-    def get(self):
-        return self.SGT
-
-    def get_name(self):
-        return "SGT"
+        self.line = self.SGT
+        self.ja_name = "いて座"
+        self.en_name = "Sagittarius"
+        self.short_name = "SGT"
+sgt = Sagittarius()
 
 class Scorpius:
     def __init__(self):
@@ -48,12 +46,11 @@ class Scorpius:
                     "JCT":[-1, 3], "BP":[], "REST":[self.SCO2, self.SCO3], "N":5,
                     "MAX":13
                    }
-
-    def get(self):
-        return self.SCO
-
-    def get_name(self):
-        return "SCO"
+        self.line = self.SCO
+        self.ja_name = "さそり座"
+        self.en_name = "Scorpius"
+        self.short_name = "SCO"
+sco = Scorpius()
 """
 class Perseus:
     def __init__(self):
