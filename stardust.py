@@ -18,6 +18,7 @@ class Stardust:
                  angle_max=5,
                  socket=None,
                  predict_circle=False,
+                 write_text=False,
                  debug=False
                 ):
         global IMPORT_SOCKET
@@ -28,11 +29,13 @@ class Stardust:
         # 小さすぎたら拡大
         if max(self.image.shape[0], self.image.shape[1]) < 1200:
             self.image = self.scale_down(self.image, max(self.image.shape[0], self.image.shape[1])/1200)
+        self.text_size = 1.72e-7 * self.image.shape[0] * self.image.shape[1] + 1.34 # TODO:adjust!
         self.star_num = star_num # Param:取り出す星の数
         self.star_depth = star_depth # Param:近隣探索数の上限
         self.dist_max = dist_max # Param:許容する距離誤差の上限
         self.angle_max = angle_max # Param:許容する角度誤差の上限
         self.predict_circle = predict_circle
+        self.write_text = write_text
         self.likelihood = 0
         self.written_img = self.image.copy()
         self.stars_dist = {"now": np.array([-1, -1])}
@@ -229,9 +232,17 @@ class Stardust:
                                    cv2.LINE_AA    
                                   )          
                     self.__search_constellation(0, p1, p1 - self.std_star, constellation.line, write=True)
+                    if self.write_text:
+                        cv2.putText(self.written_img,
+                                    constellation.en_name,
+                                    (self.std_star[0] + 4 * self.c_radius, self.std_star[1] - 4 * self.c_radius),
+                                    cv2.FONT_HERSHEY_SCRIPT_COMPLEX,
+                                    self.text_size, (255,255,255), 1, cv2.LINE_AA # 太さをマネージする(星座の大きさの計算が必要…？)
+                                   )
                     if self.socket is not None:
                         emit('searching', {"data": self.star_num-1})
                         self.socket.sleep(0)
+                    
                     return
                 elif ret >= constellation.line["N"]:
                     if self.debug:
@@ -267,14 +278,13 @@ class Stardust:
                                         predict_write=True
                                        )
             print(self.std_star)
-            """
-            cv2.putText(self.written_img,
-                        constellation.en_name,
-                        (self.std_star[0] + 4 * self.c_radius, self.std_star[1] - 4 * self.c_radius),
-                        cv2.FONT_HERSHEY_SCRIPT_COMPLEX,
-                        2, (255,255,255), 1, cv2.LINE_AA # 太さをマネージする(星座の大きさの計算が必要…？)
-                       )
-            """
+            if self.write_text:
+                cv2.putText(self.written_img,
+                            constellation.en_name,
+                            (self.std_star[0] + 4 * self.c_radius, self.std_star[1] - 4 * self.c_radius),
+                            cv2.FONT_HERSHEY_SCRIPT_COMPLEX,
+                            self.text_size, (255,255,255), 1, cv2.LINE_AA # 太さをマネージする(星座の大きさの計算が必要…？)
+                           )
 
     def __search_constellation(self, count, point, bector, constellation, write=False, predict_write=False):
         """(何番目の星か, 前の点, 前のベクトル, 星座(の一部))"""
@@ -487,7 +497,7 @@ if __name__ == '__main__':
     f = "source\\" + IMAGE_FILE + ".JPG"
     f = "example_input.JPG"
     start = time.time()    
-    sd = Stardust(f, debug=True)
+    sd = Stardust(f, write_text=True, debug=True)
     cst = cs.Sagittarius()
     #sd.draw_line(cst)
     sd.draw_line([cs.sgt, cs.sco])
