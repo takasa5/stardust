@@ -2,7 +2,7 @@
 #ANGS:前ベクトルからの角度 D:前のベクトルとの長さの比
 #JCT:分岐点 BP:戻る点の情報、実行時に追加される REST:残りの部分、JCTと対応
 #N:主に計算や判定に用いる(いるのか？) MAX:星の総数-1(最初)
-#注意:基準線を長めにとると失敗しがち
+#注意:基準線を長めにとると失敗しがち 「明るい、近い、近くに無関係の明るい星がない」やつを選ぶ
 DEFAULT = 0
 IAU = 1
 class Sagittarius:
@@ -67,6 +67,56 @@ class Scorpius:
         self.en_name = "Scorpius"
         self.short_name = "SCO"
 sco = Scorpius()
+
+class Gemini:
+    def __init__(self):
+        self.GEM3 = {"ANGS": [83.6, -14.3, -29.5, -18.2],
+                     "D": [1.460, 0.692, 0.341, 1.411],
+                     "JCT":[], "BP":[], "REST":[], "N":4
+                    }
+        self.GEM2 = {"ANGS": [64.95, 11.5, 82.9],
+                     "D": [0.736, 1.890, 0.530],
+                     "JCT":[], "BP":[], "REST":[], "N":4
+                    }
+        self.GEM = {"ANGS": [-36.6, 75.6, 75.36, -64.5],
+                    "D": [1.527, 0.545, 1.171, 1.014],
+                    "JCT": [-1, 2], "BP": [], "REST": [self.GEM2, self.GEM3], "N": 4,
+                    "MAX": 12
+                   }
+        self.iau7 = {"ANGS": [74.5], "D": [2.276],
+                     "JCT":[], "REST":[], "BP":[], "N":3
+                    }
+        self.iau6 = {"ANGS": [-160.9, -14.3, -29.5, -18.2],
+                     "D": [1.481, 0.692, 0.341, 1.411],
+                     "JCT":[0], "REST":[self.iau7], "BP":[], "N":3
+                    }
+        self.iau5 = {"ANGS": [115.5], "D": [1.0145],
+                     "JCT":[], "REST":[], "BP":[], "N":3                     
+                    }
+        self.iau4 = {"ANGS": [53.6, -61.8],
+                     "D": [0.728, 1.600],
+                     "JCT":[], "REST":[], "BP":[], "N":3
+                    }
+        self.iau3 = {"ANGS": [-144.2, -35.3, 11.5],
+                     "D": [1.146, 0.6516, 1.890],
+                     "JCT":[0], "REST": [self.iau4],
+                     "BP": [], "N": 3 
+                    }
+        self.iau2 = {"ANGS": [-68.9], "D": [0.598],
+                     "JCT":[], "REST":[], "BP":[], "N":3
+                    }
+        self.iau = {"ANGS": [-50.6, -17.3, -123.6],
+                    "D": [1.016, 1.647, 1.325],
+                    "JCT": [-1, -1, 1, 1],
+                    "REST": [self.iau2, self.iau3, self.iau5, self.iau6],
+                    "BP":[], "N": 3,
+                    "MAX": 16
+                   }
+        self.line = self.GEM
+        self.ja_name = "ふたご座"
+        self.en_name = "Gemini"
+        self.short_name = "GEM"
+gem = Gemini()
 """
 class Perseus:
     def __init__(self):

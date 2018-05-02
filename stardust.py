@@ -1,4 +1,4 @@
-"""stardust 2017/10/21"""
+"""stardust 2017/10/21~"""
 import numpy as np
 import cv2
 import time
@@ -13,7 +13,7 @@ SIZE = 666 #画像サイズ(横)
 class Stardust:
     def __init__(self, image_name,
                  star_num=120,
-                 star_depth=7,
+                 star_depth=10,
                  dist_max=50,
                  angle_max=5,
                  socket=None,
@@ -215,13 +215,14 @@ class Stardust:
             while True:
                 #2番目の星候補
                 p1 = self.search_near_star(star, i)
+                self.second_star = p1
                 self.likelihood, self.star_count = 0, 1
                 ret = self.__search_constellation(0, p1, p1 - self.std_star, line)
                 if ret == line["MAX"] and self.likelihood / line["N"] < 0.3: # 全部見つかったら
                     # 1つめと2つめについて描く
-                    self.star_count = 0
                     if self.debug:
                         print(self.std_star, self.star_count, round((1 - self.likelihood / line["N"]) * 100, 2), "%" )
+                    self.star_count = 0
                     p_list = [star, p1]
                     sp, ep = self.__line_adjust(star, p1)
                     cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
@@ -246,7 +247,7 @@ class Stardust:
                         self.socket.sleep(0)
                     print(constellation.en_name, "wrote.")
                     return
-                elif ((ret >= line["N"] and self.likelihood / line["N"] < 0.3)
+                elif ((ret > line["N"]+1 and self.likelihood / line["N"] < 0.3)
                       or (ret >= line["MAX"] * 0.5 and self.likelihood / line["N"] < 0.5)):
                     if self.debug:
                         print(self.std_star, self.star_count, round((1 - self.likelihood / line["N"]) * 100, 2), "%" )
@@ -262,6 +263,7 @@ class Stardust:
             print("failed to detect", constellation.en_name)
         else:
             self.std_star = best_point[0]
+            self.second_star = best_point[1]
             sp, ep = self.__line_adjust(best_point[0], best_point[1])
             cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
             for p in best_point:
@@ -314,8 +316,11 @@ class Stardust:
             if count == 0 and (-2 in constellation["JCT"] or -1 in constellation["JCT"]): # 分岐点が基準点の時
                 for i in range(constellation["JCT"].count(-2)): # TODO: -1のもなんとかしよう
                     constellation["BP"].append(self.std_star)
+                for i in range(constellation["JCT"].count(-1)):
+                    constellation["BP"].append(self.second_star) # なんとかしたつもり
             elif count in constellation["JCT"]: # 現在の点が分岐点なら
-                constellation["BP"].append(near_predict)
+                for i in range(constellation["JCT"].count(count)):
+                    constellation["BP"].append(near_predict)
             self.star_count += 1
             if write:
                 sp, ep = self.__line_adjust(point, near_predict)
@@ -385,8 +390,11 @@ class Stardust:
             if count == 0 and (-2 in constellation["JCT"]): # 分岐点が基準点の時
                 for i in range(constellation["JCT"].count(-2)):
                     constellation["BP"].append(self.std_star)
+                for i in range(constellation["JCT"].count(-1)):
+                    constellation["BP"].append(self.second_star) # なんとかしたつもり
             elif count in constellation["JCT"]: # 現在の点が分岐点なら
-                constellation["BP"].append(predict)
+                for i in range(constellation["JCT"].count(count)):
+                    constellation["BP"].append(near_predict)
             #print(predict)
             sp, ep = self.__line_adjust(point, predict)
             cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
@@ -509,13 +517,13 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "g007"
+    IMAGE_FILE = "7889"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()    
-    sd = Stardust(f)
+    sd = Stardust(f, debug=False)
     cst = cs.Sagittarius()
     #sd.draw_line(cst)
-    sd.draw_line(cs.sgr, write_text=True)
+    sd.draw_line(cs.gem, mode=cs.IAU)
     end = time.time()
     print("elapsed:", end - start)
     ret = sd.get_image()
