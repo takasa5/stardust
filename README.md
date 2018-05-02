@@ -43,7 +43,7 @@ ret = sd.get_image()
 - [ ] 星座データの追加
     - [ ] おひつじ座(Aries)
     - [ ] おうし座(Taurus)
-    - [ ] ふたご座(Gemini)
+    - [x] ふたご座(Gemini)
     - [ ] かに座(Cancer)
     - [ ] しし座(Leo)
     - [ ] おとめ座(Virgo)
