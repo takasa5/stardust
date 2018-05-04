@@ -117,6 +117,37 @@ class Gemini:
         self.en_name = "Gemini"
         self.short_name = "GEM"
 gem = Gemini()
+
+class Taurus():
+    def __init__(self):
+        self.TAU6 = {"ANGS": [140.4, -103.2, -62.25],
+                     "D": [1.004, 0.264, 2.118],
+                     "JCT":[], "BP":[], "REST":[]
+                    }
+        self.TAU5 = {"ANGS": [161.8, -13.4, 141.4, -121.5],
+                     "D": [1.125, 1.743, 1.050, 0.888],
+                     "JCT":[0], "BP":[], "REST":[self.TAU6]
+                    }
+        self.TAU4 = {"ANGS": [52.6, 78.0, -22.8, 87.6],
+                     "D": [0.670, 1.491, 0.864, 3.600],
+                     "JCT":[], "BP":[], "REST":[]
+                    }
+        self.TAU3 = {"ANGS": [-17.2], "D": [2.398],
+                     "JCT":[], "BP":[], "REST":[]
+                    }
+        self.TAU2 = {"ANGS": [-30.1], "D": [3.172],
+                     "JCT":[], "BP":[], "REST":[]
+                    }
+        self.TAU = {"ANGS": [-7.4, -124.2, -15.4, -2.7],
+                    "D": [1.189, 0.955, 1.008, 2.405],
+                    "JCT": [-2, 0, 2, 3], "BP": [], "REST": [self.TAU2, self.TAU5, self.TAU4, self.TAU3], "N": 4,
+                    "MAX": 18
+                   }
+        self.line = self.TAU
+        self.ja_name = "おうし座"
+        self.en_name = "Taurus"
+        self.short_name = "TAU"
+tau = Taurus()
 """
 class Perseus:
     def __init__(self):
