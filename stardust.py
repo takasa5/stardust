@@ -537,13 +537,13 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "tau2"
+    IMAGE_FILE = "tau0"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
     cst = cs.Sagittarius()
     #sd.draw_line(cst)
-    sd.draw_line(cs.tau)
+    sd.draw_line(cs.tau, mode=cs.IAU)
     end = time.time()
     print("elapsed:", end - start)
     ret = sd.get_image()

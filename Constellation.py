@@ -143,6 +143,19 @@ class Taurus():
                     "JCT": [-2, 0, 2, 3], "BP": [], "REST": [self.TAU2, self.TAU5, self.TAU4, self.TAU3], "N": 4,
                     "MAX": 18
                    }
+        self.iau3 = {"ANGS": [-109.6, 60.0],
+                     "D": [0.099, 9.702],
+                     "JCT":[], "BP":[], "REST":[]
+                    }
+        self.iau2 = {"ANGS": [161.8, -16.2, 139.0],
+                     "D": [1.125, 1.589, 1.110],
+                     "JCT":[1], "BP":[], "REST":[self.iau3]
+                    }
+        self.iau = {"ANGS": [-7.4, -124.2, -15.4, -2.7],
+                    "D": [1.189, 0.955, 1.008, 2.405],
+                    "JCT": [-2, 0, 3], "BP": [], "REST": [self.TAU2, self.iau2, self.TAU3], "N": 4,
+                    "MAX": 10
+                   }
         self.line = self.TAU
         self.ja_name = "おうし座"
         self.en_name = "Taurus"
