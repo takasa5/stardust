@@ -175,21 +175,30 @@ class Stardust:
             print("mouse:", x, y, sep=' ', end='\n')
             print(self.search_near_star((x, y), 0))
 
-    def search_near_star(self, p, i):
-        """(x, y)にi番目(0オリジン)に近いものを返す"""
-        if i >= len(self.stars):
+    def search_near_star(self, p, i, return_num=1):
+        """
+        (x, y)にi番目(0オリジン)に近いものを返す
+        return_numで複数取得できる
+        """
+        if i + return_num - 1 >= len(self.stars):
             print("Can't detect")
             #return np.array([None, None])
             return None
 
         if np.allclose(self.stars_dist["now"], p):
-            return self.stars[self.stars_dist["index"][i]]
+            if return_num == 1:
+                return self.stars[self.stars_dist["index"][i]]
+            elif return_num > 1:
+                return [self.stars[self.stars_dist["index"][i+e]] for e in range(return_num)]
         else:
             L = [np.linalg.norm(star-p) for star in self.stars]
             index = np.array(L)
             index = np.argsort(index)
             self.stars_dist["index"] = index #メモ化
-            return self.stars[index[i]]
+            if return_num == 1:
+                return self.stars[index[i]]
+            elif return_num > 1:
+                return [self.stars[index[i+e]] for e in range(return_num)]
 
     def draw_line(self, constellation, mode=cs.DEFAULT, predict_circle=False, write_text=False):
         self.predict_circle = predict_circle
@@ -307,14 +316,13 @@ class Stardust:
             constellation["BP"].clear()
         
         predict = point + self.__rotate_bector(bector, ang) * dist
-        near_predict = self.search_near_star(predict, 0)
+        near_predict, else_predict = self.search_near_star(predict, 0, return_num=2)
         predict_diff = np.linalg.norm(near_predict - predict)
         theta = self.__calc_angle(bector, near_predict - point)
         if next_one: # 次の星の予測誤差を返す
             return abs(abs(ang) - theta)
         # もう一個近くについて検証してみる TODO:もう一個だけでいい？
         
-        else_predict = self.search_near_star(predict, 1)
         else_diff = np.linalg.norm(else_predict - predict)
         else_theta = self.__calc_angle(bector, else_predict - point)
         if count + 1 < len(constellation["D"]) and else_diff < self.dist_max and abs(abs(ang) - else_theta) < self.angle_max:
@@ -537,13 +545,13 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "tau0"
+    IMAGE_FILE = "7889"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
     cst = cs.Sagittarius()
     #sd.draw_line(cst)
-    sd.draw_line(cs.tau, mode=cs.IAU)
+    sd.draw_line(cs.gem)
     end = time.time()
     print("elapsed:", end - start)
     ret = sd.get_image()
