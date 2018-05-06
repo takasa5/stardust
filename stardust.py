@@ -100,7 +100,10 @@ class Stardust:
             # TODO: ここのマジックナンバーなんとかする
             if len(contours) < 400:
                 thr -= 10
-                continue
+                if thr == 90:
+                    flag = False
+                else:
+                    continue
             #else:
                 #return
             #各輪郭から重心および面積を算出
@@ -156,8 +159,11 @@ class Stardust:
             
         #星のうち明るいほうから順に取り出す
         r_areas_arg = np.argsort(areas)[::-1] #面積の大きい順にインデックスをリストに格納
-        astars = [stars[r_areas_arg[i]] for i in range(self.star_num)]
-
+        if len(stars) > self.star_num:
+            astars = [stars[r_areas_arg[i]] for i in range(self.star_num)]
+        else:
+            astars = [stars[r_areas_arg[i]] for i in range(len(stars))]
+            print("star num:", len(astars))
         print("threashold:",thr)
         # DEBUG
         if self.debug:
@@ -203,9 +209,14 @@ class Stardust:
     def draw_line(self, constellation, mode=cs.DEFAULT, predict_circle=False, write_text=False):
         self.predict_circle = predict_circle
         if isinstance(constellation, list):
+            detect_flags = []
             for cst in constellation:
-                self.draw_line(cst, mode=mode, predict_circle=predict_circle, write_text=write_text)
-            return
+                ret = self.draw_line(cst, mode=mode, predict_circle=predict_circle, write_text=write_text)
+                detect_flags.append(ret)
+            if True in detect_flags:
+                return True
+            else:
+                return False
         if mode == cs.DEFAULT:
             line = constellation.line
         elif mode == cs.IAU:
@@ -419,7 +430,7 @@ class Stardust:
                     constellation["BP"].append(self.second_star) # なんとかしたつもり
             if count in constellation["JCT"]: # 現在の点が分岐点なら
                 for i in range(constellation["JCT"].count(count)):
-                    constellation["BP"].append(near_predict)
+                    constellation["BP"].append(predict)
             
             sp, ep = self.__line_adjust(point, predict)
             cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
@@ -542,13 +553,13 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "1916"
+    IMAGE_FILE = "sco0"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
     cst = cs.Sagittarius()
     #sd.draw_line(cst)
-    sd.draw_line([cs.sgr, cs.sco])
+    sd.draw_line(cs.sco)
     end = time.time()
     print("elapsed:", end - start)
     ret = sd.get_image()
