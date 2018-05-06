@@ -169,7 +169,7 @@ class Stardust:
         return astars
 
     def on_mouse(self, event, x, y, flag, param):
-        """マウスクリック時(dup)"""
+        """マウスクリック時"""
         #左クリックで最近傍の星出力
         if event == cv2.EVENT_LBUTTONDOWN:
             print("mouse:", x, y, sep=' ', end='\n')
@@ -221,21 +221,21 @@ class Stardust:
                 sockcnt += 1
                 self.socket.sleep(0)
             self.std_star = star
-            i = 1
-            while True:
-                #2番目の星候補
-                p1 = self.search_near_star(star, i)
-                self.second_star = p1
+            ######
+            # 基準星の近くのself.star_depth個をとってくる
+            second_candidates = self.search_near_star(star, 0, return_num=self.star_depth)
+            for second in second_candidates:
+                self.second_star = second
                 self.likelihood, self.star_count = 0, 1
-                ret = self.__search_constellation(0, p1, p1 - self.std_star, line)
+                ret = self.__search_constellation(0, second, second - self.std_star, line)
                 correct_probability = self.likelihood / line["MAX"]
                 if ret == line["MAX"] or correct_probability > 0.8: # 全部見つかったら
                     # 1つめと2つめについて描く
                     if self.debug:
                         print(self.std_star, self.star_count, round(correct_probability * 100, 2), "%" )
                     self.star_count = 0
-                    p_list = [star, p1]
-                    sp, ep = self.__line_adjust(star, p1)
+                    p_list = [star, second]
+                    sp, ep = self.__line_adjust(star, second)
                     cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
                     for p in p_list:
                         cv2.circle(self.written_img, 
@@ -245,7 +245,7 @@ class Stardust:
                                    self.l_weight,
                                    cv2.LINE_AA    
                                   )          
-                    self.__search_constellation(0, p1, p1 - self.std_star, line, write=True, predict_write=True)
+                    self.__search_constellation(0, second, second - self.std_star, line, write=True, predict_write=True)
                     if write_text:
                         cv2.putText(self.written_img,
                                     constellation.en_name,
@@ -264,13 +264,10 @@ class Stardust:
                         print(self.std_star, self.star_count, round(correct_probability * 100, 2), "%" )
                     if min_like < correct_probability:
                         min_like = correct_probability
-                        best_point = [star, p1]
+                        best_point = [star, second]
                 elif self.debug and self.star_count > line["N"] :
                     print(self.std_star, self.star_count, round((self.likelihood / line["MAX"]) * 100, 2), "%" )
-
-                i += 1
-                if self.star_depth < i:
-                    break
+            
         self.star_count = 0
         if best_point is None:
             print("failed to detect", constellation.en_name)
@@ -545,13 +542,13 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "7889"
+    IMAGE_FILE = "1916"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
     cst = cs.Sagittarius()
     #sd.draw_line(cst)
-    sd.draw_line(cs.gem)
+    sd.draw_line([cs.sgr, cs.sco])
     end = time.time()
     print("elapsed:", end - start)
     ret = sd.get_image()
