@@ -48,6 +48,7 @@ sgr = Sagittarius()
 
 class Scorpius:
     def __init__(self):
+        """
         self.SCO3 = {"ANGS":[-160.489],
                      "D":[1.1615],
                      "JCT":[], "BP":[], "REST":[]
@@ -60,6 +61,23 @@ class Scorpius:
                     "D":[1.8050, 0.3505, 0.8718, 2.9250, 0.5277],
                     "JCT":[-2, 3], "BP":[], "REST":[self.SCO2, self.SCO3], "N":5,
                     "MAX":13
+                   }
+        """
+        self.SCO4 = {"ANGS": [70.9, 13.4, 50.3, 75.2, 1.3, -132.0],
+                     "D": [0.780, 1.341, 0.740, 0.427, 1.813, 1.220],
+                     "JCT": [], "BP": [], "REST": []
+                    }
+        self.SCO3 = {"ANGS": [-160.5], "D": [1.162],
+                     "JCT": [], "BP": [], "REST": []
+                    }
+        self.SCO2 = {"ANGS": [-122.1, -80.8], "D": [1.369, 0.528],
+                     "JCT": [0], "BP": [], "REST": [self.SCO3]
+                    }
+        self.SCO = {"ANGS": [-25.9, -13.8, -22.3, -1.0],
+                    "D": [1.147, 2.853, 0.554, 1.178],
+                    "JCT": [-2, 3], "BP": [],
+                    "REST": [self.SCO2, self.SCO4],
+                    "N": 4, "MAX": 13
                    }
         self.line = self.SCO
         self.iau = self.SCO
