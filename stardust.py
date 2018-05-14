@@ -80,6 +80,7 @@ class Stardust:
         img_gray = cv2.cvtColor(self.image, cv2.COLOR_RGB2GRAY)
         del_img = self.image.copy()
         firstflag = True
+        tmp_stars = []
         while flag:
             stars, areas = [], []
             ret, new = cv2.threshold(img_gray, thr, 255, cv2.THRESH_BINARY)
@@ -97,7 +98,19 @@ class Stardust:
             """
             #print(len(contours))
             # TODO: ここのマジックナンバーなんとかする
-            if len(contours) < 400:
+            if len(contours) < 50: # 星がごく少数写っているとき、その座標を記録
+                tmp_stars = []
+                for cnt in contours:
+                    M = cv2.moments(cnt)
+                    if M['m00'] != 0:
+                        cx = int(M['m10'] / M['m00'])
+                        cy = int(M['m01'] / M['m00'])
+                        tmp_stars.append(np.array([cx, cy], dtype='int32'))
+                    else:
+                        tmp_stars.append(np.array(cnt[0, 0], dtype='int32'))
+                thr -= 10
+                continue
+            elif len(contours) < 400:
                 thr -= 10
                 if thr == 90:
                     flag = False
@@ -145,14 +158,10 @@ class Stardust:
                 firstflag = False
             # 面積の最大値周辺は見ない：ここから
             # 分散が大きい場合、外れ値を削除していく
-            # TODO: 楕円で削除してみる
-            
             if area_std > 100 and areas[maxarea_index] > 2.5 * area_std:
                 cnt = contours[maxarea_index]
-                x, y, w, h = cv2.boundingRect(cnt)
-                #epsilon = 0.1 * cv2.arcLength(cnt, True)
-                #approx = cv2.approxPolyDP(cnt, epsilon, True)
-                del_img = cv2.rectangle(del_img, (x, y), (x+w, y+h), (255, 0, 0), -1)
+                del_img = cv2.fillConvexPoly(del_img, cnt, (255, 0, 0))
+                # TODO: 拡張して削除する
                 img_gray = cv2.cvtColor(del_img, cv2.COLOR_RGB2GRAY)
                 # DEBUG
                 if self.debug:
@@ -168,7 +177,7 @@ class Stardust:
             #ここまで
             
             flag = False
-            
+        
         #星のうち明るいほうから順に取り出す
         r_areas_arg = np.argsort(areas)[::-1] #面積の大きい順にインデックスをリストに格納
         if len(stars) > self.star_num:
@@ -176,6 +185,12 @@ class Stardust:
         else:
             astars = [stars[r_areas_arg[i]] for i in range(len(stars))]
             print("star num:", len(astars))
+        # 光害の中にまきこまれた星があれば追加しとく
+        for tmp_star in tmp_stars: # TODO: 現状だとまきこまれてない星のも追加してる(わずかにずれるため)
+            flags = [np.allclose(tmp_star, star) for star in astars]
+            if not True in flags:
+                astars.append(tmp_star)
+        print("star num:", len(astars))
         print("threashold:",thr)
         # DEBUG
         if self.debug:
@@ -565,11 +580,11 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "0038"
+    IMAGE_FILE = "tau1"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
-    cst = cs.sco
+    cst = cs.tau
     sd.draw_line(cst)
     #sd.draw_line(cs.sco)
     end = time.time()
