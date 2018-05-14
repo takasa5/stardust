@@ -185,10 +185,12 @@ class Stardust:
         else:
             astars = [stars[r_areas_arg[i]] for i in range(len(stars))]
             print("star num:", len(astars))
-        # 光害の中にまきこまれた星があれば追加しとく
-        for tmp_star in tmp_stars: # TODO: 現状だとまきこまれてない星のも追加してる(わずかにずれるため)
-            flags = [np.allclose(tmp_star, star) for star in astars]
-            if not True in flags:
+        # 光害の中にまきこまれた星があれば追加しておく
+        for tmp_star in tmp_stars:
+            # 半径円に含まれるくらい近くに星があればそれは追加しない
+            flags = [True for star in astars
+                        if np.linalg.norm(tmp_star-star) < self.c_radius]
+            if not (True in flags):
                 astars.append(tmp_star)
         print("star num:", len(astars))
         print("threashold:",thr)
@@ -199,6 +201,7 @@ class Stardust:
                 cv2.circle(tmp, (star[0],star[1]), 2, (0,0,255), -1, cv2.LINE_AA)
             cv2.imshow("finalcnt", self.scale_down(tmp, max(tmp.shape[0], tmp.shape[1])/SIZE))
             cv2.waitKey(1)
+            
         return astars
 
     def on_mouse(self, event, x, y, flag, param):
@@ -580,11 +583,11 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "tau1"
+    IMAGE_FILE = "low_"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
-    cst = cs.tau
+    cst = cs.sco
     sd.draw_line(cst)
     #sd.draw_line(cs.sco)
     end = time.time()
