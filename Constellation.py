@@ -35,7 +35,7 @@ class Sagittarius:
                     "D":[1.25, 0.724, 1.934, 1.093, 0.731, 1.625],
                     "JCT":[-2, -2, 1, 3], "BP":[],
                     "REST":[self.iau2, self.iau3, self.iau4, self.iau5],
-                    "N":6, "MAX": 7
+                    "N":6, "MAX": 8 # 本当は7
                    }
         self.line = self.SGR
         self.ja_name = "いて座"
@@ -176,6 +176,37 @@ class Taurus():
         self.en_name = "Taurus"
         self.short_name = "TAU"
 tau = Taurus()
+
+class Orion():
+    def __init__(self):
+        self.ORI6 = {"ANGS": [None], "D": [0]}
+        self.ORI5 = {"ANGS": [78.9, 24.3, 43.4],
+                     "D": [0.521, 1.884, 1.221],
+                     "JCT": [], "BP": [], "REST": [],
+                    }
+        self.ORI4 = {"ANGS": [-157.9, 109.3, -2.7, 44.3],
+                     "D": [1.584, 0.163, 2.267, 0.410],
+                     "JCT": [], "BP": [], "REST": [],
+                    }
+        self.ORI3 = {"ANGS": [114.6, -49.0, -82.2],
+                     "D": [0.818, 0.636, 1.282],
+                     "JCT": [0, 2, 2], "BP": [],
+                     "REST": [self.ORI4, self.ORI5, self.ORI6],
+                    }
+        self.ORI2 = {"ANGS": [None], "D": [4]}
+        self.ORI = {"ANGS": [-10.2, 104.1, 108.4],
+                    "D": [0.979, 6.673, 0.921],
+                    "JCT": [-2, 0], "BP": [],
+                    "REST": [self.ORI2, self.ORI3],
+                    "N": 3, "MAX": 10 # "砂時計"で出るように意図的に調整
+                   }
+        self.line = self.ORI
+        self.iau = self.ORI
+        self.ja_name = "オリオン座"
+        self.en_name = "Orion"
+        self.short_name = "ORI"
+ori = Orion()
+
 """
 class Perseus:
     def __init__(self):

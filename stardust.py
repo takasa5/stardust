@@ -71,7 +71,7 @@ class Stardust:
     def __detect_stars(self):
         """最適(？)スレッショルドを設定し、抽出した星座標のリストを返す"""
         flag = True
-        thr = 250
+        thr = 220
         
         # 円の半径と線の太さをちょうどよくする
         self.c_radius = int(max(self.image.shape[0], self.image.shape[1])/250)
@@ -156,12 +156,16 @@ class Stardust:
                 print("std:", area_std)
                 #q75, q25 = np.percentile(areas, [75, 25])
                 #iqr = q75 - q25
+                delete_count = 0
                 firstflag = False
             # 面積の最大値周辺は見ない：ここから
             # 分散が大きい場合、外れ値を削除していく
             if area_std > 100 and areas[maxarea_index] > 2.5 * area_std:
                 cnt = contours[maxarea_index]
                 del_img = cv2.fillConvexPoly(del_img, cnt, (255, 0, 0))
+                delete_count += 1
+                if delete_count > 10: # 消す回数
+                    break
                 # TODO: 拡張して削除する
                 img_gray = cv2.cvtColor(del_img, cv2.COLOR_RGB2GRAY)
                 # DEBUG
@@ -350,7 +354,7 @@ class Stardust:
         """(何番目の星か, 前の点, 前のベクトル, 星座(の一部))"""
         dist, ang = constellation["D"][count], constellation["ANGS"][count]
         if ang is None:
-            if write:
+            if write and len(self.standard_list) > dist:
                 re_point = self.standard_list[dist]
                 self.__write(point, re_point)
 
@@ -608,16 +612,16 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "g004"
+    IMAGE_FILE = "ori0"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
-    cst = cs.sco
+    cst = cs.ori
     sd.draw_line(cst, mode=cs.IAU)
     #sd.draw_line(cs.sco)
     end = time.time()
     print("elapsed:", end - start)
-    print(sd.standard_list)
+    print(sd.detect)
     ret = sd.get_image()
     cv2.namedWindow("return", cv2.WINDOW_NORMAL)
     cv2.imshow("return", ret)
