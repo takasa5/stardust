@@ -27,18 +27,15 @@ class Sagittarius:
                     "JCT":[0, 2], "BP":[], "REST":[self.SGR2, self.SGR4],
                     "N":4, "MAX": 13
                    }
-        self.iau5 = {"ANGS":[-58, +124, +142],
-                     "D":[0.731, 1.625, 0.832],
-                     "JCT":[], "BP":[]
-                    }
-        self.iau4 = {"ANGS":[-44], "D":[1.315], "JCT":[], "BP":[]}
-        self.iau3 = {"ANGS":[-111], "D":[1.02], "JCT":[], "BP":[]}
-        self.iau2 = {"ANGS":[-44], "D":[2.016], "JCT":[], "BP":[]}
-        self.iau = {"ANGS":[+85, +47, -37, +93],
-                    "D":[1.25, 0.724, 1.934, 1.093],
+        self.iau5 = {"ANGS":[None], "D":[7]}
+        self.iau4 = {"ANGS":[None], "D":[5]}
+        self.iau3 = {"ANGS":[None], "D":[7]}
+        self.iau2 = {"ANGS":[None], "D":[3]}
+        self.iau = {"ANGS":[+85, +47, -37, +93, -58, +124],
+                    "D":[1.25, 0.724, 1.934, 1.093, 0.731, 1.625],
                     "JCT":[-2, -2, 1, 3], "BP":[],
                     "REST":[self.iau2, self.iau3, self.iau4, self.iau5],
-                    "N":4, "MAX": 11
+                    "N":6, "MAX": 7
                    }
         self.line = self.SGR
         self.ja_name = "いて座"

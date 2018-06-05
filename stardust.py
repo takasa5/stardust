@@ -45,6 +45,7 @@ class Stardust:
         self.b = np.array([self.image.shape[1] - 1, 0])
         self.c = np.array([self.image.shape[1] - 1, self.image.shape[0] - 1])
         self.d = np.array([0, self.image.shape[0] - 1])
+        self.standard_list = [] # 基準(始点から検知判定まで)の星 描画時再訪問用
         self.detect = None # 見つかったかどうか(探索後T/F)
         self.stars = self.__detect_stars()
         
@@ -348,10 +349,35 @@ class Stardust:
     def __search_constellation(self, count, point, bector, constellation, write=False, predict_write=False, next_one=False):
         """(何番目の星か, 前の点, 前のベクトル, 星座(の一部))"""
         dist, ang = constellation["D"][count], constellation["ANGS"][count]
-            
-        
-        if count == 0: # TODO:応急処置 ちゃんと後始末ができるようにしたい
-            constellation["BP"].clear()
+        if ang is None:
+            if write:
+                re_point = self.standard_list[dist]
+                self.__write(point, re_point)
+
+                if count+1 == len(constellation["D"]):
+                    if "BP" in constellation and len(constellation["BP"]) > 0:
+                        for (branch, rest) in zip(constellation["BP"], constellation["REST"]):
+                            self.__search_constellation(0,
+                                                        branch,
+                                                        near_predict - point,
+                                                        rest,
+                                                        write=write,
+                                                        predict_write=predict_write
+                                                    )
+                    return self.star_count
+                return self.__search_constellation(count+1,
+                                                   re_point,
+                                                   re_point - point,
+                                                   constellation,
+                                                   write=write,
+                                                   predict_write=predict_write
+                                                   )
+            else:
+                return self.star_count
+        # 18/6/5 削除            
+        #if count == 0: # TODO:応急処置 ちゃんと後始末ができるようにしたい
+        #    constellation["BP"].clear()
+
         # 星座データから予測される次の星の位置をpredictに格納
         predict = point + self.__rotate_bector(bector, ang) * dist
         # predictの最近傍とそのつぎに近い星を取得
@@ -389,18 +415,14 @@ class Stardust:
                     constellation["BP"].append(near_predict)
             self.star_count += 1
             if write:
-                sp, ep = self.__line_adjust(point, near_predict)
-                cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
-                cv2.circle(self.written_img, 
-                           (near_predict[0], near_predict[1]),
-                           self.c_radius,
-                           (255, 255, 255),
-                           self.l_weight,
-                           cv2.LINE_AA    
-                          )
+                if "N" in constellation:
+                    if len(self.standard_list) == 0:
+                        self.standard_list += [self.std_star, self.second_star]
+                    self.standard_list.append(near_predict)
+                self.__write(point, near_predict)
 
             if count+1 == len(constellation["D"]): # 端点ならば
-                if len(constellation["BP"]) > 0: # 分岐点が存在すれば
+                if "BP" in constellation and len(constellation["BP"]) > 0: # 分岐点が存在すれば
                     for (branch, rest) in zip(constellation["BP"], constellation["REST"]):
                         self.__search_constellation(0,
                                                     branch,
@@ -433,7 +455,7 @@ class Stardust:
                     sp, ep = self.__line_adjust(point, managed_predict)
                     cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
                 if count+1 == len(constellation["D"]): # 端点ならば
-                    if len(constellation["BP"]) > 0: # 分岐点が存在すれば
+                    if "BP" in constellation and len(constellation["BP"]) > 0: # 分岐点が存在すれば
                         for (branch, rest) in zip(constellation["BP"], constellation["REST"]):
                             self.__search_constellation(0,
                                                         branch,
@@ -462,17 +484,8 @@ class Stardust:
                 for i in range(constellation["JCT"].count(count)):
                     constellation["BP"].append(predict)
             
-            sp, ep = self.__line_adjust(point, predict)
-            cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
-            if self.predict_circle: # predict_circleによって予測時に円を描くか決める
-                print("predict", predict)
-                cv2.circle(self.written_img, 
-                           (int(predict[0]), int(predict[1])),
-                           self.c_radius,
-                           (255, 255, 255),
-                           self.l_weight,
-                           cv2.LINE_AA    
-                          )
+            self.__write(point, predict, circle=self.predict_circle)
+            
             if count+1 == len(constellation["D"]): # 端点ならば TODO:端点いかなくても分岐点は書きたい→前の辺を参照する現状では厳しい
                 if len(constellation["BP"]) > 0: # 分岐点が存在すれば
                     for (branch, rest) in zip(constellation["BP"], constellation["REST"]):
@@ -533,6 +546,18 @@ class Stardust:
         t4 = (p3[0] - p4[0]) * (p2[1] - p3[1]) + (p3[1] - p4[1]) * (p3[0] - p2[0])
         return t1 * t2 < 0 and t3 * t4 < 0
 
+    def __write(self, previous, current, circle=True):
+        sp, ep = self.__line_adjust(previous, current)
+        cv2.line(self.written_img, sp, ep, (255,255,255), self.l_weight, cv2.LINE_AA)
+        if circle:
+            cv2.circle(self.written_img, 
+                       (current[0], current[1]),
+                       self.c_radius,
+                       (255, 255, 255),
+                       self.l_weight,
+                       cv2.LINE_AA    
+                      )
+
     def __manage_cross(self, start, end):
         """はみ出た点に対し、そこに続くような線を描くための枠上の座標を返す"""
         # TODO: 外から中へのクロスへの対処
@@ -583,15 +608,16 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "low_"
+    IMAGE_FILE = "g004"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
     cst = cs.sco
-    sd.draw_line(cst)
+    sd.draw_line(cst, mode=cs.IAU)
     #sd.draw_line(cs.sco)
     end = time.time()
     print("elapsed:", end - start)
+    print(sd.standard_list)
     ret = sd.get_image()
     cv2.namedWindow("return", cv2.WINDOW_NORMAL)
     cv2.imshow("return", ret)
