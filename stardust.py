@@ -74,13 +74,15 @@ class Stardust:
     def __detect_stars(self):
         """最適(？)スレッショルドを設定し、抽出した星座標のリストを返す"""
         flag = True
-        thr = 220
-        
+        THR_MIN, THR_MAX = 90, 220
+        thr = THR_MAX             
+
         #輪郭検出用グレースケール画像生成
         img_gray = cv2.cvtColor(self.image, cv2.COLOR_RGB2GRAY)
         del_img = self.image.copy()
         firstflag = True
         tmp_stars = []
+        tmpstars_flag = True
         while flag:
             stars, areas = [], []
             ret, new = cv2.threshold(img_gray, thr, 255, cv2.THRESH_BINARY)
@@ -90,12 +92,12 @@ class Stardust:
                 cv2.waitKey(1)
             #輪郭検出
             _, contours, _ = cv2.findContours(new, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            if thr == 220:
+            if thr == THR_MAX:
                 first_starnum = len(contours)
 
             #print(len(contours))
             # TODO: ここのマジックナンバーなんとかする
-            if len(contours) < 50: # 星がごく少数写っているとき、その座標を記録
+            if tmpstars_flag and len(contours) < 80: # 星がごく少数写っているとき、その座標を記録
                 tmp_stars = []
                 for cnt in contours:
                     M = cv2.moments(cnt)
@@ -106,16 +108,20 @@ class Stardust:
                     else:
                         tmp_stars.append(np.array(cnt[0, 0], dtype='int32'))
                 thr -= 10
+                if thr == THR_MIN:
+                    flag = False
+                    tmpstars_flag = False
                 continue
             elif len(contours) < 400:
                 thr -= 10
-                if thr == 90:
+                if thr == THR_MIN:
                     flag = False
                 else:
                     continue
             #else:
                 #return
             #各輪郭から重心および面積を算出
+            
             for cnt in contours:
                 M = cv2.moments(cnt)
                 """
@@ -198,6 +204,7 @@ class Stardust:
         else:
             astars = [stars[r_areas_arg[i]] for i in range(len(stars))]
             print("star num:", len(astars))
+        
         # 光害の中にまきこまれた星があれば追加しておく
         for tmp_star in tmp_stars:
             # 半径円に含まれるくらい近くに星があればそれは追加しない
@@ -620,7 +627,7 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "ori2"
+    IMAGE_FILE = "ori7"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)

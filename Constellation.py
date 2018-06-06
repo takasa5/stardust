@@ -198,7 +198,7 @@ class Orion():
                     "D": [0.979, 6.673, 0.921],
                     "JCT": [-2, 0], "BP": [],
                     "REST": [self.ORI2, self.ORI3],
-                    "N": 3, "MAX": 10 # "砂時計"で出るように意図的に調整
+                    "N": 3, "MAX": 9 # "砂時計"で出るように意図的に調整
                    }
         self.line = self.ORI
         self.iau = self.ORI
