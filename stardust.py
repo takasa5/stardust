@@ -164,6 +164,12 @@ class Stardust:
             # 分散が大きい場合、外れ値を削除していく
             if area_std > 100 and areas[maxarea_index] > 2.5 * area_std:
                 cnt = contours[maxarea_index]
+                # 大きい星の潰れ対策(2)
+                M = cv2.moments(cnt)
+                cx = int(M['m10'] / M['m00'])
+                cy = int(M['m01'] / M['m00'])
+                tmp_stars.append(np.array([cx, cy], dtype='int32'))
+
                 del_img = cv2.fillConvexPoly(del_img, cnt, (255, 0, 0))
                 delete_count += 1
                 if delete_count > 10: # 消す回数
@@ -614,11 +620,11 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "dzlm"
+    IMAGE_FILE = "g003"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
-    cst = cs.sco
+    cst = cs.sgr
     sd.draw_line(cst)
     #sd.draw_line(cs.sco)
     end = time.time()
