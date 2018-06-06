@@ -13,7 +13,7 @@ SIZE = 666 #画像サイズ(横)
 class Stardust:
     def __init__(self, image_name,
                  star_num=120,
-                 star_depth=8,
+                 star_depth=10,
                  dist_max=50, # 画像の大きさによるので固定すべきでなさそう
                  angle_max=5,
                  socket=None,
@@ -29,6 +29,9 @@ class Stardust:
             self.image = self.scale_down(self.image, max(self.image.shape[0], self.image.shape[1])/1200)
         self.text_size = 1.72e-7 * self.image.shape[0] * self.image.shape[1] + 1.34 # TODO:adjust!
         self.text_weight = 3 if self.image.shape[0] > 2000 and self.image.shape[1] > 2000 else 1
+        # 円の半径と線の太さをちょうどよくする
+        self.c_radius = int(max(self.image.shape[0], self.image.shape[1])/250)
+        self.l_weight = int(max(self.image.shape[0], self.image.shape[1])/1000)
         self.star_num = star_num # Param:取り出す星の数
         self.star_depth = star_depth # Param:近隣探索数の上限
         self.dist_max = dist_max # Param:許容する距離誤差の上限
@@ -73,10 +76,6 @@ class Stardust:
         flag = True
         thr = 220
         
-        # 円の半径と線の太さをちょうどよくする
-        self.c_radius = int(max(self.image.shape[0], self.image.shape[1])/250)
-        self.l_weight = int(max(self.image.shape[0], self.image.shape[1])/1000)
-        
         #輪郭検出用グレースケール画像生成
         img_gray = cv2.cvtColor(self.image, cv2.COLOR_RGB2GRAY)
         del_img = self.image.copy()
@@ -90,13 +89,10 @@ class Stardust:
                 cv2.imshow("gray", self.scale_down(new, max(new.shape[0], new.shape[1])/666))
                 cv2.waitKey(1)
             #輪郭検出
-            det_img, contours, hierarchy = cv2.findContours(new, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            """
-            im = cv2.drawContours(image.copy(), contours, -1, (0, 255, 0), self.l_weight) 
-            cv2.imshow("contours", scale_down(im, max(img.shape[0], img.shape[1])/SIZE))
-            #cv2.imshow("contours", im)
-            cv2.waitKey(1)
-            """
+            _, contours, _ = cv2.findContours(new, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            if thr == 220:
+                first_starnum = len(contours)
+
             #print(len(contours))
             # TODO: ここのマジックナンバーなんとかする
             if len(contours) < 50: # 星がごく少数写っているとき、その座標を記録
@@ -143,7 +139,13 @@ class Stardust:
                     stars.append(np.array([cx, cy], dtype='int32'))
                 else:
                     stars.append(np.array(cnt[0, 0], dtype='int32'))
+            # 0面積が多すぎる→星が多い画像で、thrが大きすぎる
+            if np.median(areas) == 0 and len(contours) < first_starnum * 4:
+                thr -= 20
+                continue
+            
             maxarea_index = np.argmax(areas)
+
             # TODO:画像の大半を消去してしまうようならthrあげるべき/削除方式をやめるべき？
             """
             if areas[maxarea_index] > image.shape[0] * image.shape[1] / 6:
@@ -612,12 +614,12 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "ori0"
+    IMAGE_FILE = "dzlm"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
-    cst = cs.ori
-    sd.draw_line(cst, mode=cs.IAU)
+    cst = cs.sco
+    sd.draw_line(cst)
     #sd.draw_line(cs.sco)
     end = time.time()
     print("elapsed:", end - start)
