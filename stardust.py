@@ -620,11 +620,11 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "g003"
+    IMAGE_FILE = "ori2"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
-    cst = cs.sgr
+    cst = cs.ori
     sd.draw_line(cst)
     #sd.draw_line(cs.sco)
     end = time.time()
