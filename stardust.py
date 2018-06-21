@@ -27,10 +27,16 @@ class Stardust:
             self.image = cv2.imread(image_name)
         # 小さすぎたら拡大
         if max(self.image.shape[0], self.image.shape[1]) < 1200:
-            self.image = self.scale_down(self.image,
-                max(self.image.shape[0], self.image.shape[1])/1200)
-        self.text_size = 1.72e-7 * self.image.shape[0] * self.image.shape[1] + 1.34  # TODO:adjust!
-        self.text_weight = 3 if self.image.shape[0] > 2000 and self.image.shape[1] > 2000 else 1
+            self.image = self.scale_down(self.image, 
+                                         max(self.image.shape[0],
+                                             self.image.shape[1])/1200)
+        self.text_size = (1.72e-7
+                          * self.image.shape[0]
+                          * self.image.shape[1]
+                          + 1.34)  # TODO:adjust!
+        self.text_weight = (3 if (self.image.shape[0] > 2000
+                                  and self.image.shape[1] > 2000)
+                            else 1)
         self.c_radius = int(max(self.image.shape[0], self.image.shape[1])/250)
         self.l_weight = int(max(self.image.shape[0], self.image.shape[1])/1000)
         self.star_num = star_num  # Param:取り出す星の数
@@ -78,11 +84,9 @@ class Stardust:
         flag = True
         thr = self.thr_max
 
-        # 輪郭検出用グレースケール画像生成
+        # 画像から星情報(面積と座標)をget
         img_gray = cv2.cvtColor(self.image, cv2.COLOR_RGB2GRAY)
         self.del_img = self.image.copy()
-        firstflag = True
-
         self.first_delete = True
         self.tmp_stars = []
         while True:
@@ -91,6 +95,7 @@ class Stardust:
                 continue
             areas, stars = self._get_star_info(thr, contours)
             if stars is None:
+                thr = areas
                 continue
             img_gray = self._delete_light_pollution(areas, stars, contours)
             if img_gray is not None:
@@ -679,12 +684,12 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "0038"
+    IMAGE_FILE = "ori5"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
-    cst = cs.sgr
-    sd.draw_line(cst)
+    cst = cs.ori
+    sd.draw_line(cst, mode=cs.IAU)
     #sd.draw_line(cs.sco)
     end = time.time()
     print("elapsed:", end - start)

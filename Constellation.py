@@ -199,9 +199,37 @@ class Orion():
                     "JCT": [-2, 0], "BP": [],
                     "REST": [self.ORI2, self.ORI3],
                     "N": 3, "MAX": 9 # "砂時計"で出るように意図的に調整
-                   }
+                    }
+        self.iau8 = {"ANGS": [117.5, -35.2, 35.5, -39.2],
+                     "D": [1.444, 0.852, 2.133, 0.831],
+                     "JCT": [], "BP": [], "REST": []
+                     }
+        self.iau7 = {"ANGS": [44, 11.1, 45.2, 70.8, 120.7],
+                     "D": [0.386, 1.831, 1.255, 0.350, 2.864],
+                     "JCT": [], "BP": [], "REST": [],
+                     }
+        self.iau6 = {"ANGS": [None], "D": [0]}
+        self.iau5 = {"ANGS": [47.3, None],
+                     "D": [0.578, 4],
+                     "JCT": [], "BP": [], "REST": [],
+                     }
+        self.iau4 = {"ANGS": [167.1, 109.3, -2.7, 44.3],
+                     "D": [1.174, 0.163, 2.267, 0.410],
+                     "JCT": [0], "BP": [], "REST": [self.iau8],
+                     }
+        self.iau3 = {"ANGS": [-139.2, 17.9],
+                     "D": [0.373, 2.268],
+                     "JCT": [], "BP": [], "REST": [],
+                     }
+        self.iau2 = {"ANGS": [-85.8], "D": [1.060], "JCT": [], "BP": [], "REST": []}
+        self.iau = {"ANGS": [-10.2, -33, -96.2],
+                    "D": [0.979, 5.028, 1.100],
+                    "JCT": [-2, 0, 1, 1, 2, 2], "BP": [],
+                    "REST": [self.iau2, self.iau3, self.iau4, self.iau5, self.iau6, self.iau7],
+                    "N": 3, "MAX": 9
+                    }
+        
         self.line = self.ORI
-        self.iau = self.ORI
         self.ja_name = "オリオン座"
         self.en_name = "Orion"
         self.short_name = "ORI"
