@@ -20,7 +20,7 @@ When my first time of watching starry sky I tried to find some constellations, b
 Typically, without prior knowledge about position of constellations, finding them is so difficult.  
 Now, with a smartphone app, we can know constellation's approximate position (thanks to GPS & gyro sensor).  
 So, my goal is to identify constellation and it's position **accurately** from image.  
-Combining this system and GPS and gyro (and high sensitively camera), we can starry sky with constellation information.
+Combining this system and GPS and gyro (and high sensitively camera), we can watch starry sky with constellation information.
 
 
 ## Requirements
