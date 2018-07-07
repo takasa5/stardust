@@ -126,6 +126,9 @@ class Stardust:
             for star in astars:
                 cv2.circle(
                     tmp, (star[0], star[1]), 2, (0, 0, 255), -1, cv2.LINE_AA)
+            for star in astars[0:3]:
+                cv2.circle(
+                    tmp, (star[0], star[1]), self.c_radius, (0, 255, 0), -1, cv2.LINE_AA)
             cv2.imshow("finalcnt",
                        self.scale_down(tmp,
                                        max(tmp.shape[0], tmp.shape[1])/SIZE))
@@ -684,11 +687,11 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "ori5"
+    IMAGE_FILE = "0038"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
-    cst = cs.ori
+    cst = cs.sgr
     sd.draw_line(cst, mode=cs.IAU)
     #sd.draw_line(cs.sco)
     end = time.time()
@@ -698,6 +701,6 @@ if __name__ == '__main__':
     cv2.namedWindow("return", cv2.WINDOW_NORMAL)
     cv2.imshow("return", ret)
     cv2.setMouseCallback("return", sd.on_mouse)
-    #cv2.imwrite(cst.short_name+"_"+IMAGE_FILE+".JPG", ret)
+    # cv2.imwrite(cst.short_name+"_"+IMAGE_FILE+".JPG", ret)
     #cv2.imwrite("multi_"+IMAGE_FILE+".JPG", ret)
     cv2.waitKey()
