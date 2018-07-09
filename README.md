@@ -27,6 +27,7 @@ Combining this system and GPS and gyro (and high sensitively camera), we can wat
 ```
 opencv-python==3.4.0
 numpy==1.14.0
+scipy==1.1.0
 ```  
 
 ## Usage
