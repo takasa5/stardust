@@ -25,7 +25,7 @@ class Sagittarius:
         self.SGR = {"ANGS":[+85, +47, -37, -29],
                     "D":[1.25, 0.724, 1.934, 1.354],
                     "JCT":[0, 2], "BP":[], "REST":[self.SGR2, self.SGR4],
-                    "N":4, "MAX": 13
+                    "N":4, "MAX": 13 #13
                    }
         self.iau5 = {"ANGS":[None], "D":[7]}
         self.iau4 = {"ANGS":[None], "D":[5]}

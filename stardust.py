@@ -1,7 +1,8 @@
 """stardust 2017/10/21~"""
+import time
 import numpy as np
 import cv2
-import time
+import scipy.spatial
 import Constellation as cs
 IMPORT_SOCKET = True
 try:
@@ -39,6 +40,7 @@ class Stardust:
                             else 1)
         self.c_radius = int(max(self.image.shape[0], self.image.shape[1])/250)
         self.l_weight = int(max(self.image.shape[0], self.image.shape[1])/1000)
+        self.diagonal = np.sqrt(self.image.shape[0]**2 + self.image.shape[1]**2)
         self.star_num = star_num  # Param:取り出す星の数
         self.star_depth = star_depth  # Param:近隣探索数の上限
         self.dist_max = dist_max  # Param:許容する距離誤差の上限
@@ -60,6 +62,7 @@ class Stardust:
         self.thr_min = 90
         self.thr_max = 220
         self.stars = self.__detect_stars()
+        self.tree = scipy.spatial.KDTree(self.stars)
 
     def get_image(self):
         return self.written_img
@@ -141,24 +144,21 @@ class Stardust:
         # 左クリックで最近傍の星出力
         if event == cv2.EVENT_LBUTTONDOWN:
             print("mouse:", x, y, sep=' ', end='\n')
-            print(self.search_near_star((x, y), 0))
+            print(self.search_near_star([x, y]))
 
-    def search_near_star(self, p, i, return_num=1):
+    def search_near_star(self, p, k=1):
         """
-        (x, y)にi番目(0オリジン)に近いものを返す
-        return_numで複数取得できる
+        p=(x, y)のk近傍を返す
         """
-        if i + return_num - 1 >= len(self.stars):
+        if k >= len(self.stars):
             print("Can't detect")
             return None
-
-        L = [np.linalg.norm(star-p) for star in self.stars]
-        index = np.array(L)
-        index = np.argsort(index)
-        if return_num == 1:
-            return self.stars[index[i]]
-        elif return_num > 1:
-            return [self.stars[index[i+e]] for e in range(return_num)]
+        else:
+            dist, index = self.tree.query(p, k=k, distance_upper_bound=self.diagonal)
+            if k == 1:
+                return self.stars[index]
+            else:
+                return [self.stars[i] for i in index]
 
     def draw_line(self,
                   constellation,
@@ -196,7 +196,7 @@ class Stardust:
             self.std_star = star
             # 基準星の近くのself.star_depth個をとってくる
             second_candidates = self.search_near_star(
-                star, 0, return_num=self.star_depth)
+                star, k=self.star_depth)
             # とってきた二番目の星候補すべてについて、残りの星を探索し星座一致率を計算
             for second in second_candidates:
                 self.second_star = second
@@ -350,7 +350,7 @@ class Stardust:
         predict = point + self.__rotate_bector(bector, ang) * dist
         # predictの最近傍とそのつぎに近い星を取得
         near_predict, else_predict = self.search_near_star(
-            predict, 0, return_num=2)
+            predict.tolist()[0], k=2)
         predict_diff = np.linalg.norm(near_predict - predict)
         theta = self.__calc_angle(bector, near_predict - point)
         if next_one:  # 次の星の予測誤差を返す
@@ -687,7 +687,7 @@ class Stardust:
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "0038"
+    IMAGE_FILE = "1499"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
