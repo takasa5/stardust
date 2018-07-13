@@ -129,7 +129,7 @@ class Stardust:
             for star in astars:
                 cv2.circle(
                     tmp, (star[0], star[1]), 2, (0, 0, 255), -1, cv2.LINE_AA)
-            for star in astars[0:3]:
+            for star in astars[0:10]:
                 cv2.circle(
                     tmp, (star[0], star[1]), self.c_radius, (0, 255, 0), -1, cv2.LINE_AA)
             cv2.imshow("finalcnt",
@@ -158,6 +158,8 @@ class Stardust:
             if k == 1:
                 return self.stars[index]
             else:
+                if index[0] == len(self.stars): # 検索失敗
+                    return [None for i in range(k)]
                 return [self.stars[i] for i in index]
 
     def draw_line(self,
@@ -165,6 +167,7 @@ class Stardust:
                   mode=cs.DEFAULT,
                   predict_circle=False,
                   write_text=False):
+        self.write_text = write_text
         self.predict_circle = predict_circle
         if isinstance(constellation, list):
             detect_flags = []
@@ -184,8 +187,8 @@ class Stardust:
             line = constellation.iau
         self.constellation = constellation
 
-        min_like = 0
-        best_point = None
+        self.min_like = 0
+        self.best_point = None
         sockcnt = 0
         # 検出した星のうちself.star_num個すべてについてみていく
         for star in self.stars:
@@ -199,127 +202,27 @@ class Stardust:
                 star, k=self.star_depth)
             # とってきた二番目の星候補すべてについて、残りの星を探索し星座一致率を計算
             for second in second_candidates:
-                self.second_star = second
-                self.likelihood, self.star_count = 0, 1
-                ret = self.__search_constellation(
-                    0, second, second - self.std_star, line)
-                correct_probability = self.likelihood / line["MAX"]
-                if ret == line["MAX"] or correct_probability > 0.8:  # 全部見つかったら
-                    # 1つめと2つめについて描く
-                    if self.debug:
-                        print(self.std_star,
-                              self.star_count,
-                              round(correct_probability * 100, 2),
-                              "%")
-                    self.star_count = 0
-                    p_list = [star, second]
-                    sp, ep = self.__line_adjust(star, second)
-                    cv2.line(self.written_img,
-                             sp,
-                             ep,
-                             (255, 255, 255),
-                             self.l_weight,
-                             cv2.LINE_AA)
-                    for p in p_list:
-                        cv2.circle(self.written_img, 
-                                   (p[0], p[1]),
-                                   self.c_radius,
-                                   (255, 255, 255),
-                                   self.l_weight,
-                                   cv2.LINE_AA
-                                   )
-                    # 残りについて書く
-                    self.__search_constellation(0,
-                                                second,
-                                                second - self.std_star,
-                                                line, write=True,
-                                                predict_write=True)
-                    if write_text:  # 文字入れありの場合
-                        cv2.putText(self.written_img,
-                                    constellation.en_name,
-                                    (self.std_star[0] + 4 * self.c_radius,
-                                        self.std_star[1] - 4 * self.c_radius),
-                                    cv2.FONT_HERSHEY_SCRIPT_COMPLEX,
-                                    self.text_size,
-                                    (255, 255, 255),
-                                    self.text_weight,
-                                    cv2.LINE_AA  # 太さをマネージする(星座の大きさの計算が必要…？)
-                                    )
-                    if self.socket is not None:
-                        emit('searching', {"data": self.star_num-1})
-                        self.socket.sleep(0)
-                    print(constellation.en_name, "wrote.")
-                    self.detect = True
+                self._check_constellation(star, second, line)
+                if self.detect:
                     return self.detect
-
-                elif correct_probability > 0.5:
-                    if self.debug:
-                        print(self.std_star,
-                              self.star_count,
-                              round(correct_probability * 100, 2),
-                              "%")
-                    # 星座の一致率が高いものを保存しておく
-                    if min_like < correct_probability:
-                        min_like = correct_probability
-                        best_point = [star, second]
-                elif self.debug and self.star_count > line["N"]:
-                    print(self.std_star,
-                          self.star_count,
-                          round((self.likelihood / line["MAX"]) * 100, 2),
-                          "%")
-
-        self.star_count = 0
-        # 星座一致率がある程度高いものが保存されていた場合、描く
-        if best_point is None:
-            print("failed to detect", constellation.en_name)
-            self.detect = False
-            return self.detect
-        else:
-            self.std_star = best_point[0]
-            self.second_star = best_point[1]
-            # 一個目と二個目を描く
-            sp, ep = self.__line_adjust(best_point[0], best_point[1])
-            cv2.line(self.written_img,
-                     sp,
-                     ep,
-                     (255, 255, 255),
-                     self.l_weight,
-                     cv2.LINE_AA)
-            for p in best_point:
-                cv2.circle(self.written_img,
-                           (p[0], p[1]),
-                           self.c_radius,
-                           (255, 255, 255),
-                           self.l_weight,
-                           cv2.LINE_AA
-                           )
-            # 残りを描く
-            self.__search_constellation(0,
-                                        best_point[1],
-                                        best_point[1] - best_point[0],
-                                        line,
-                                        write=True,
-                                        predict_write=True
-                                        )
-            if write_text:
-                cv2.putText(self.written_img,
-                            constellation.en_name,
-                            (self.std_star[0] + 4 * self.c_radius,
-                                self.std_star[1] - 4 * self.c_radius),
-                            cv2.FONT_HERSHEY_SCRIPT_COMPLEX,
-                            self.text_size,
-                            (255, 255, 255),
-                            self.text_weight,
-                            cv2.LINE_AA  # 太さをマネージする(星座の大きさの計算が必要…？)
-                            )
-            print(constellation.en_name, "wrote.")
-            self.detect = True
-            return self.detect
+        else: # 全星の探索が終わった時
+            self.star_count = 0
+            # 星座一致率がある程度高いものが保存されていた場合、描く
+            if self.best_point is None:
+                print("failed to detect", constellation.en_name)
+                self.detect = False
+                return self.detect
+            else:
+                self.std_star = self.best_point[0]
+                self.second_star = self.best_point[1]
+                self._draw_circle_and_line(self.std_star, self.second_star, line)
+                self.detect = True
+                return self.detect
 
     def __search_constellation(self, count, point, bector, constellation, write=False, predict_write=False, next_one=False):
         """(何番目の星か, 前の点, 前のベクトル, 星座(の一部))"""
         dist, ang = constellation["D"][count], constellation["ANGS"][count]
-        if ang is None:
+        if ang is None: # 再訪問
             if write and len(self.standard_list) > dist:
                 re_point = self.standard_list[dist]
                 self.__write(point, re_point)
@@ -351,6 +254,8 @@ class Stardust:
         # predictの最近傍とそのつぎに近い星を取得
         near_predict, else_predict = self.search_near_star(
             predict.tolist()[0], k=2)
+        if near_predict is None:
+            return self.star_count
         predict_diff = np.linalg.norm(near_predict - predict)
         theta = self.__calc_angle(bector, near_predict - point)
         if next_one:  # 次の星の予測誤差を返す
@@ -683,16 +588,97 @@ class Stardust:
             return img_gray
         else:
             return None
+    
+    def _check_constellation(self, std_star, second_star, line):
+        """
+        一番目の星と二番目の星をもとに残りの星を探索、及び星座一致率を計算
+        一致率に従って描画を決定
+        7/13 時点、std_star引数は無駄
+        """
+        self.second_star = second_star
+        self.likelihood, self.star_count = 0, 1
+        ret = self.__search_constellation(
+            0, second_star, second_star - self.std_star, line)
+        correct_probability = self.likelihood / line["MAX"]
+        if ret == line["MAX"] or correct_probability > 0.8:  # 全部見つかったら
+            # 1つめと2つめについて描く
+            if self.debug:
+                print(self.std_star,
+                    self.star_count,
+                    round(correct_probability * 100, 2),
+                    "%")
+            self.star_count = 0
+            self._draw_circle_and_line(self.std_star, second_star, line)
+            if self.socket is not None:
+                emit('searching', {"data": self.star_num-1})
+                self.socket.sleep(0)
+            # print(self.constellation.en_name, "wrote.")
+            self.detect = True
+            return self.detect
+
+        elif correct_probability > 0.5:
+            if self.debug:
+                print(self.std_star,
+                    self.star_count,
+                    round(correct_probability * 100, 2),
+                    "%")
+            # 星座の一致率が高いものを保存しておく
+            if self.min_like < correct_probability:
+                self.min_like = correct_probability
+                self.best_point = [self.std_star, second_star]
+        elif self.debug and self.star_count > line["N"]:
+            print(self.std_star,
+                self.star_count,
+                round((self.likelihood / line["MAX"]) * 100, 2),
+                "%")
+
+    def _draw_circle_and_line(self, p1, p2, line):
+        # 一個目と二個目を描く
+        sp, ep = self.__line_adjust(p1, p2)
+        cv2.line(self.written_img,
+            sp,
+            ep,
+            (255, 255, 255),
+            self.l_weight,
+            cv2.LINE_AA)
+        for p in [p1, p2]:
+            cv2.circle(self.written_img,
+                (p[0], p[1]),
+                self.c_radius,
+                (255, 255, 255),
+                self.l_weight,
+                cv2.LINE_AA
+                )
+        # 残りを描く
+        self.__search_constellation(0,
+            p2,
+            p2 - p1,
+            line,
+            write=True,
+            predict_write=True
+            )
+        if self.write_text:
+            cv2.putText(self.written_img,
+                self.constellation.en_name,
+                (self.std_star[0] + 4 * self.c_radius,
+                    self.std_star[1] - 4 * self.c_radius),
+                cv2.FONT_HERSHEY_SCRIPT_COMPLEX,
+                self.text_size,
+                (255, 255, 255),
+                self.text_weight,
+                cv2.LINE_AA  # 太さをマネージする(星座の大きさの計算が必要…？)
+                )
+        print(self.constellation.en_name, "wrote.")
 
 
 if __name__ == '__main__':
     #test, 0004, 0038, 1499, 1618, 1614, 1916, g001 ~ g004, dzlm, dalr, daqw
-    IMAGE_FILE = "1499"
+    IMAGE_FILE = "ori6"
     f = "source\\" + IMAGE_FILE + ".JPG"
     start = time.time()
     sd = Stardust(f, debug=True)
-    cst = cs.sgr
-    sd.draw_line(cst, mode=cs.IAU)
+    cst = cs.ori
+    sd.draw_line(cst, mode=cs.DEFAULT)
     #sd.draw_line(cs.sco)
     end = time.time()
     print("elapsed:", end - start)
