@@ -50,6 +50,11 @@ ret = sd.get_image()
 # cv2.imshow() or cv2.imwrite()
 ```
 
+Moreover, you can use stardust easily by LINE bot.  
+https://line.me/R/ti/p/%40njl8027x
+
+<img src="line_screenshot.jpg" width="400px">
+
 ## TODO
 - [ ] 精度向上
     - [x] 尤度計算式の改善
