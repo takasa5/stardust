@@ -1,0 +1,418 @@
+{
+    "Sagittarius": {
+        "ja_name": "いて座",
+        "en_name": "Sagittarius",
+        "short_name": "SGR",
+        "line": {
+            "angles": [85, 47, -37, -29],
+            "distances": [1.25, 0.724, 1.934, 1.354],
+            "junctions": [0, 2],
+            "BP": [],
+            "rest": [
+                {
+                    "angles": [-65.5, 96.3],
+                    "distances": [0.8987, 0.3662],
+                    "junctions": [0],
+                    "BP": [],
+                    "rest": [
+                        {
+                        "angles": [-128, 15.17],
+                        "distances": [0.7564, 2.0678],
+                        "junctions": [],
+                        "BP": [],
+                        "rest": []
+                        }
+                    ]
+                },
+                {
+                    "angles": [123.1, 27.85, -37.55],
+                    "distances": [0.8143, 0.9881, 0.59727],
+                    "junctions": [0],
+                    "BP": [],
+                    "rest": [
+                        {
+                        "angles": [-48.5],
+                        "distances": [1.237],
+                        "junctions": [],
+                        "BP": [],
+                        "rest": []
+                        }
+                    ]
+                }
+            ],
+            "n": 4,
+            "max": 13
+        },
+        "iau": {
+            "angles": [85, 47, -37, 93, -58, 124],
+            "distances": [1.25, 0.724, 1.934, 1.093, 0.731, 1.625],
+            "junctions": [-2, -2, 1, 3],
+            "BP": [],
+            "rest": [
+                {
+                    "angles": [null],
+                    "distances": [3]
+                },
+                {
+                    "angles": [null],
+                    "distances": [7]
+                },
+                {
+                    "angles": [null],
+                    "distances": [5]
+                },
+                {
+                    "angles": [null],
+                    "distances": [7]
+                }
+            ],
+            "n": 6,
+            "max": 8
+        }
+    },
+    "Scorpius": {
+        "ja_name": "さそり座",
+        "en_name": "Scorpius",
+        "short_name": "SCO",
+        "line": {
+            "angles": [-25.9, -13.8, -22.3, -1.0],
+            "distances": [1.147, 2.853, 0.554, 1.178],
+            "junctions": [-2, 3],
+            "BP": [],
+            "rest": [
+                {
+                    "angles": [-122.1, -80.8],
+                    "distances": [1.369, 0.528],
+                    "junctions": [0],
+                    "BP": [],
+                    "rest": [
+                        {
+                        "angles": [-160.5],
+                        "distances": [1.162],
+                        "junctions": [],
+                        "BP": [],
+                        "rest": []
+                        }
+                    ]
+                },
+                {
+                    "angles": [70.9, 13.4, 50.3, 75.2, 1.3, -132.0],
+                    "distances": [0.780, 1.341, 0.740, 0.427, 1.813, 1.220],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                }
+            ],
+            "n": 4,
+            "max": 13
+        },
+        "iau": {
+            "angles": [-25.9, -13.8, -22.3, -1.0],
+            "distances": [1.147, 2.853, 0.554, 1.178],
+            "junctions": [-2, 3],
+            "BP": [],
+            "rest": [
+                {
+                    "angles": [-122.1, -80.8],
+                    "distances": [1.369, 0.528],
+                    "junctions": [0],
+                    "BP": [],
+                    "rest": [
+                        {
+                        "angles": [-160.5],
+                        "distances": [1.162],
+                        "junctions": [],
+                        "BP": [],
+                        "rest": []
+                        }
+                    ]
+                },
+                {
+                    "angles": [70.9, 13.4, 50.3, 75.2, 1.3, -132.0],
+                    "distances": [0.780, 1.341, 0.740, 0.427, 1.813, 1.220],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                }
+            ],
+            "n": 4,
+            "max": 13
+        }
+    },
+    "Gemini": {
+        "ja_name": "ふたご座",
+        "en_name": "Gemini",
+        "short_name": "GEM",
+        "line": {
+            "angles": [-36.6, 75.6, 75.36, -64.5],
+            "distances": [1.527, 0.545, 1.171, 1.014],
+            "junctions": [-1, 2],
+            "BP": [],
+            "rest": [
+                {
+                    "angles": [64.95, 11.5, 82.9],
+                    "distances": [0.736, 1.890, 0.530],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                },
+                {
+                    "angles": [83.6, -14.3, -29.5, -18.2],
+                    "distances": [1.460, 0.692, 0.341, 1.411],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                }
+            ],
+            "n": 4,
+            "max": 12
+        },
+        "iau": {
+            "angles": [-50.6, -17.3, -123.6],
+            "distances": [1.016, 1.647, 1.325],
+            "junctions": [-1, -1, 1, 1],
+            "BP": [],
+            "rest": [
+                {
+                    "angles": [-68.9],
+                    "distances": [0.598],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                },
+                {
+                    "angles": [-144.2, -35.3, 11.5],
+                    "distances": [1.146, 0.6516, 1.890],
+                    "junctions": [0],
+                    "BP": [],
+                    "rest": [
+                        {
+                            "angles": [53.6, -61.8],
+                            "distances": [0.728, 1.600],
+                            "junctions": [],
+                            "BP": [],
+                            "rest": []
+                        }
+                    ]
+                },
+                {
+                    "angles": [115.5],
+                    "distances": [1.0145],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                },
+                {
+                    "angles": [-160.9, -14.3, -29.5, -18.2],
+                    "distances": [1.481, 0.692, 0.341, 1.411],
+                    "junctions": [0],
+                    "BP": [],
+                    "rest": [
+                        {
+                            "angles": [74.5],
+                            "distances": [2.276],
+                            "junctions": [],
+                            "BP": [],
+                            "rest": []
+                        }
+                    ]
+                }
+            ],
+            "n": 3,
+            "max": 16
+        }
+    },
+    "Taurus": {
+        "ja_name": "おうし座",
+        "en_name": "Taurus",
+        "short_name": "TAU",
+        "line": {
+            "angles": [-7.4, -124.2, -15.4, -2.7],
+            "distances": [1.189, 0.955, 1.008, 2.405],
+            "junctions": [-2, 0, 2, 3],
+            "BP": [],
+            "rest": [
+                {
+                    "angles": [-30.1],
+                    "distances": [3.172],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                },
+                {
+                    "angles": [161.8, -13.4, 141.4, -121.5],
+                    "distances": [1.125, 1.743, 1.050, 0.888],
+                    "junctions": [0],
+                    "BP": [],
+                    "rest": [
+                        {
+                            "angles": [140.4, -103.2, -62.25],
+                            "distances": [1.004, 0.264, 2.118],
+                            "junctions": [],
+                            "BP": [],
+                            "rest": []
+                        }
+                    ]
+                },
+                {
+                    "angles": [52.6, 78.0, -22.8, 87.6],
+                    "distances": [0.670, 1.491, 0.864, 3.600],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                },
+                {
+                    "angles": [-17.2],
+                    "distances": [2.398],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                }
+            ],
+            "n": 4,
+            "max": 18
+        },
+        "iau": {
+            "angles": [-7.4, -124.2, -15.4, -2.7],
+            "distances": [1.189, 0.955, 1.008, 2.405],
+            "junctions": [-2, 0, 3],
+            "BP": [],
+            "rest": [
+                {
+                    "angles": [-30.1],
+                    "distances": [3.172],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                },
+                {
+                    "angles": [161.8, -16.2, 139.0],
+                    "distances": [1.125, 1.589, 1.110],
+                    "junctions": [1],
+                    "BP": [],
+                    "rest": [
+                        {
+                            "angles": [-109.6, 60.0],
+                            "distances": [0.099, 9.702],
+                            "junctions": [],
+                            "BP": [],
+                            "rest": []
+                        }
+                    ]
+                },
+                {
+                    "angles": [-17.2],
+                    "distances": [2.398],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                }
+            ]
+        }
+    },
+    "Orion": {
+        "ja_name": "オリオン座",
+        "en_name": "Orion",
+        "short_name": "ORI",
+        "line": {
+            "angles": [-10.2, 104.1, 108.4],
+            "distances": [0.979, 6.673, 0.921],
+            "junctions": [-2, 0],
+            "BP": [],
+            "rest": [
+                {
+                    "angles": [null],
+                    "distances": [4]
+                },
+                {
+                    "angles": [114.6, -49.0, -82.2],
+                    "distances": [0.818, 0.636, 1.282],
+                    "junctions": [0, 2, 2],
+                    "BP": [],
+                    "rest": [
+                        {
+                            "angles": [160.8, 118.8, 10.9, 20.9, -2.7, 44.3],
+                            "distances": [1.840, 0.483, 0.391, 0.744, 2.267, 0.410],
+                            "junctions": [],
+                            "BP": [],
+                            "rest": []
+                        },
+                        {
+                            "angles": [78.9, 24.3, 43.4],
+                            "distances": [0.521, 1.884, 1.221],
+                            "junctions": [],
+                            "BP": [],
+                            "rest": []
+                        },
+                        {
+                            "angles": [null],
+                            "distances": [0]
+                        }
+                    ]
+                }
+            ],
+            "n": 3,
+            "max": 9
+        },
+        "iau": {
+            "angles": [-10.2, -33, -96.2],
+            "distances": [0.979, 5.028, 1.100],
+            "junctions": [-2, 0, 1, 1, 2, 2],
+            "BP": [],
+            "rest": [
+                {
+                    "angles": [-85.8],
+                    "distances": [1.060],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                },
+                {
+                    "angles": [-139.2, 17.9],
+                    "distances": [0.373, 2.268],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                },
+                {
+                    "angles": [167.1, 109.3, -2.7, 44.3],
+                    "distances": [1.174, 0.163, 2.267, 0.410],
+                    "junctions": [0],
+                    "BP": [],
+                    "rest": [
+                        {
+                            "angles": [117.5, -35.2, 35.5, -39.2],
+                            "distances": [1.444, 0.852, 2.133, 0.831],
+                            "junctions": [],
+                            "BP": [],
+                            "rest": []
+                        }
+                    ]
+                },
+                {
+                    "angles": [47.3, null],
+                    "distances": [0.578, 4],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                },
+                {
+                    "angles": [null],
+                    "distances": [0],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                },
+                {
+                    "angles": [44, 11.1, 45.2, 70.8, 120.7],
+                    "distances": [0.386, 1.831, 1.255, 0.350, 2.864],
+                    "junctions": [],
+                    "BP": [],
+                    "rest": []
+                }
+            ],
+            "n": 3,
+            "max": 9
+        }
+    }
+}

@@ -1,9 +1,11 @@
 """stardust 2017/10/21~"""
 import time
+import json
+
 import numpy as np
 import cv2
 import scipy.spatial
-import Constellation as cs
+
 IMPORT_SOCKET = True
 try:
     from flask_socketio import emit
@@ -164,7 +166,7 @@ class Stardust:
 
     def draw_line(self,
                   constellation,
-                  mode=cs.DEFAULT,
+                  mode="default",
                   predict_circle=False,
                   write_text=False):
         """
@@ -179,7 +181,7 @@ class Stardust:
         self.min_like = 0
         self.best_points = {}
         for cstl in constellation:
-            self.best_points[cstl.en_name] = {
+            self.best_points[cstl["en_name"]] = {
                 "correct_probability": 0,
                 "std_star": None,
                 "second_star": None,
@@ -202,7 +204,7 @@ class Stardust:
                     self._check_constellation(star, second, cstl, mode)
                     if self.detect:
                         constellation.remove(cstl)
-                        self.best_points.pop(cstl.en_name)
+                        self.best_points.pop(cstl["en_name"])
                         self.detect = False
                 # if self.detect:
                 #     return self.detect
@@ -226,16 +228,16 @@ class Stardust:
         再帰的に星座に一致するかみていく
         args: (何番目の星か, 前の点, 前のベクトル, 星座(の一部))
         """
-        dist, ang = constellation["D"][count], constellation["ANGS"][count]
+        dist, ang = constellation["distances"][count], constellation["angles"][count]
         if ang is None: # 再訪問
             if write and len(self.standard_list) > dist:
                 re_point = self.standard_list[dist]
                 self.__write(point, re_point)
 
-                if count+1 == len(constellation["D"]):
+                if count+1 == len(constellation["distances"]):
                     if "BP" in constellation and len(constellation["BP"]) > 0:
                         for (branch, rest) in zip(
-                                constellation["BP"], constellation["REST"]):
+                                constellation["BP"], constellation["rest"]):
                             self.__search_constellation(0,
                                                         branch,
                                                         near_predict - point,
@@ -268,7 +270,7 @@ class Stardust:
 
         else_diff = np.linalg.norm(else_predict - predict)
         else_theta = self.__calc_angle(bector, else_predict - point)
-        if (count + 1 < len(constellation["D"])
+        if (count + 1 < len(constellation["distances"])
                 and else_diff < self.dist_max
                 and abs(abs(ang) - else_theta) < self.angle_max):
             # 二つの近傍の星について、その先にそれらしい星があるほうを採用する
@@ -295,15 +297,15 @@ class Stardust:
                    if abs(dist - found_bec_rate) < 1 else 1)
             self.likelihood += 1 - err / dist
 
-            if count == 0 and (-2 in constellation["JCT"]
-                               or -1 in constellation["JCT"]):
+            if count == 0 and (-2 in constellation["junctions"]
+                               or -1 in constellation["junctions"]):
                 # 基準点、二番点の処理
-                for i in range(constellation["JCT"].count(-2)):
+                for i in range(constellation["junctions"].count(-2)):
                     constellation["BP"].append(self.std_star)
-                for i in range(constellation["JCT"].count(-1)):
+                for i in range(constellation["junctions"].count(-1)):
                     constellation["BP"].append(self.second_star)
-            if count in constellation["JCT"]:  # 現在の点が分岐点なら
-                for i in range(constellation["JCT"].count(count)):
+            if count in constellation["junctions"]:  # 現在の点が分岐点なら
+                for i in range(constellation["junctions"].count(count)):
                     constellation["BP"].append(near_predict)
             self.star_count += 1
             if write:
@@ -313,11 +315,11 @@ class Stardust:
                     self.standard_list.append(near_predict)
                 self.__write(point, near_predict)
 
-            if count+1 == len(constellation["D"]):  # 端点ならば
+            if count+1 == len(constellation["distances"]):  # 端点ならば
                 if "BP" in constellation and len(constellation["BP"]) > 0:
                     # 分岐点が存在すれば
                     for (branch, rest) in zip(
-                            constellation["BP"], constellation["REST"]):
+                            constellation["BP"], constellation["rest"]):
                         self.__search_constellation(0,
                                                     branch,
                                                     near_predict - point,
@@ -352,11 +354,11 @@ class Stardust:
                              (255, 255, 255),
                              self.l_weight,
                              cv2.LINE_AA)
-                if count+1 == len(constellation["D"]):  # 端点ならば
+                if count+1 == len(constellation["distances"]):  # 端点ならば
                     if "BP" in constellation and len(constellation["BP"]) > 0:
                         # 分岐点が存在すれば
                         for (branch, rest) in zip(
-                                constellation["BP"], constellation["REST"]):
+                                constellation["BP"], constellation["rest"]):
                             self.__search_constellation(0,
                                                         branch,
                                                         predict - point,
@@ -375,23 +377,23 @@ class Stardust:
                                                    predict_write=True
                                                    )
 
-            if count == 0 and (-2 in constellation["JCT"]
-                               or -1 in constellation["JCT"]):  # 基準点、二番点の処理
-                for i in range(constellation["JCT"].count(-2)):
+            if count == 0 and (-2 in constellation["junctions"]
+                               or -1 in constellation["junctions"]):  # 基準点、二番点の処理
+                for i in range(constellation["junctions"].count(-2)):
                     constellation["BP"].append(self.std_star)
-                for i in range(constellation["JCT"].count(-1)):
+                for i in range(constellation["junctions"].count(-1)):
                     constellation["BP"].append(self.second_star)  # なんとかしたつもり
-            if count in constellation["JCT"]:  # 現在の点が分岐点なら
-                for i in range(constellation["JCT"].count(count)):
+            if count in constellation["junctions"]:  # 現在の点が分岐点なら
+                for i in range(constellation["junctions"].count(count)):
                     constellation["BP"].append(predict)
 
             self.__write(point, predict, circle=self.predict_circle)
 
-            if count+1 == len(constellation["D"]):
+            if count+1 == len(constellation["distances"]):
                 # 端点ならば TODO:端点いかなくても分岐点は書きたい→前の辺を参照する現状では厳しい
                 if len(constellation["BP"]) > 0:  # 分岐点が存在すれば
                     for (branch, rest) in zip(
-                            constellation["BP"], constellation["REST"]):
+                            constellation["BP"], constellation["rest"]):
                         self.__search_constellation(0,
                                                     branch,
                                                     predict - point,
@@ -607,18 +609,19 @@ class Stardust:
         一致率が一定以上高ければ描画し，中途半端なら記録しておく
         7/13 時点、std_star引数は無駄
         """
-        if mode == cs.DEFAULT:
-            line = constellation.line
-        elif mode == cs.IAU:
-            line = constellation.iau
+        if mode == "default":
+            line = constellation["line"]
+        elif mode == "iau":
+            line = constellation["iau"]
         
         self.second_star = second_star
         self.likelihood, self.star_count = 0, 1
         ret = self.__search_constellation(
-            0, second_star, second_star - self.std_star, line)
-        correct_probability = self.likelihood / line["MAX"]
-        if ret == line["MAX"] or correct_probability > 0.8:  # 全部見つかったら
-            self.best_points[constellation.en_name] = {
+            0, second_star, second_star - self.std_star, line
+        )
+        correct_probability = self.likelihood / line["max"]
+        if ret == line["max"] or correct_probability > 0.8:  # 全部見つかったら
+            self.best_points[constellation["en_name"]] = {
                 "correct_probability": correct_probability,
                 "std_star": self.std_star,
                 "second_star": second_star,
@@ -627,7 +630,7 @@ class Stardust:
             # 1つめと2つめについて描く
             if self.debug:
                 print(
-                    constellation.en_name,
+                    constellation["en_name"],
                     self.std_star,
                     self.star_count,
                     round(correct_probability * 100, 2),
@@ -635,7 +638,7 @@ class Stardust:
                 )
             self.star_count = 0
             self._draw_circle_and_line(self.std_star, second_star, line)
-            print(constellation.en_name, "wrote.")
+            print(constellation["en_name"], "wrote.")
             if self.socket is not None:
                 emit('searching', {"data": self.star_num-1})
                 self.socket.sleep(0)
@@ -646,15 +649,15 @@ class Stardust:
                 
             if self.debug:
                 print(
-                    constellation.en_name,
+                    constellation["en_name"],
                     self.std_star,
                     self.star_count,
                     round(correct_probability * 100, 2),
                     "%"
                 )
             # 星座の一致率が高いものを保存しておく
-            if self.best_points[constellation.en_name]["correct_probability"] < correct_probability:
-                self.best_points[constellation.en_name] = {
+            if self.best_points[constellation["en_name"]]["correct_probability"] < correct_probability:
+                self.best_points[constellation["en_name"]] = {
                     "correct_probability": correct_probability,
                     "std_star": self.std_star,
                     "second_star": self.second_star,
@@ -664,10 +667,10 @@ class Stardust:
             # if self.min_like < correct_probability:
             #     self.min_like = correct_probability
             #     self.best_point = [self.std_star, second_star]
-        elif self.debug and self.star_count > line["N"]:
+        elif self.debug and self.star_count > line["n"]:
             print(self.std_star,
                 self.star_count,
-                round((self.likelihood / line["MAX"]) * 100, 2),
+                round((self.likelihood / line["max"]) * 100, 2),
                 "%")
 
     def _draw_circle_and_line(self, p1, p2, line):
@@ -699,7 +702,7 @@ class Stardust:
             # TODO: (19/05/30)self.constellation廃止のため機能しない
             pass 
             # cv2.putText(self.written_img,
-            #     self.constellation.en_name,
+            #     self.constellation["en_name"],
             #     (self.std_star[0] + 4 * self.c_radius,
             #         self.std_star[1] - 4 * self.c_radius),
             #     cv2.FONT_HERSHEY_SCRIPT_COMPLEX,
@@ -717,8 +720,10 @@ if __name__ == '__main__':
     start = time.time()
     sd = Stardust(IMAGE_FILE, debug=True)
     # cst = [cs.sgr, cs.sco]
-    cst = cs.sgr
-    sd.draw_line(cst, mode=cs.DEFAULT)
+    with open("constellation.json") as f:
+        data = json.load(f)
+    cst = data["Scorpius"]
+    sd.draw_line(cst, mode="default")
     #sd.draw_line(cs.sco)
     end = time.time()
     print("elapsed:", end - start)
