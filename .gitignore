@@ -14,3 +14,4 @@ stella_calc.py
 .DS_Store
 test.py
 !line_screenshot.jpg
+.venv/
