@@ -16,3 +16,4 @@ test.py
 !line_screenshot.jpg
 .venv/
 .jj/
+.jj/*
