@@ -15,3 +15,4 @@ stella_calc.py
 test.py
 !line_screenshot.jpg
 .venv/
+.jj/
